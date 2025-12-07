@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Cranes Management{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="fas fa-tachometer-alt me-2 text-primary"></i>Dashboard</h1>
+        <p>Welcome to Cranes Management System</p>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card stats-card drivers">
+            <div class="card-body d-flex align-items-center">
+                <div class="stats-icon drivers me-3">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Total Drivers</h6>
+                    <h3 class="mb-0">{{ driver_count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card cranes">
+            <div class="card-body d-flex align-items-center">
+                <div class="stats-icon cranes me-3">
+                    <i class="fas fa-truck"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Total Cranes</h6>
+                    <h3 class="mb-0">{{ crane_count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card clients">
+            <div class="card-body d-flex align-items-center">
+                <div class="stats-icon clients me-3">
+                    <i class="fas fa-building"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Total Clients</h6>
+                    <h3 class="mb-0">{{ client_count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="border-left: 4px solid #17a2b8;">
+            <div class="card-body d-flex align-items-center">
+                <div class="stats-icon me-3" style="background-color: rgba(23, 162, 184, 0.1); color: #17a2b8;">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Time Sheets</h6>
+                    <h3 class="mb-0">{{ timesheet_count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Second Row Stats -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card" style="border-left: 4px solid #f39c12;">
+            <div class="card-body d-flex align-items-center">
+                <div class="stats-icon me-3" style="background-color: rgba(243, 156, 18, 0.1); color: #f39c12;">
+                    <i class="fas fa-hand-holding-usd"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Total Loans</h6>
+                    <h3 class="mb-0">{{ loan_count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="fas fa-bolt me-2"></i>Quick Actions
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'timesheet_create' %}" class="btn btn-info text-white">
+                        <i class="fas fa-clock me-2"></i>New Time Sheet Entry
+                    </a>
+                    <a href="{% url 'loan_create' %}" class="btn btn-warning">
+                        <i class="fas fa-hand-holding-usd me-2"></i>Record Loan
+                    </a>
+                    <a href="{% url 'reports_dashboard' %}" class="btn btn-danger">
+                        <i class="fas fa-file-pdf me-2"></i>Generate Reports
+                    </a>
+                    <a href="{% url 'driver_create' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-user-plus me-2"></i>Add New Driver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="fas fa-clock me-2"></i>Time Sheet Summary
+            </div>
+            <div class="card-body">
+                {% if timesheet_count > 0 %}
+                <p class="text-center">
+                    <a href="{% url 'timesheet_list' %}" class="btn btn-outline-info">
+                        <i class="fas fa-list me-1"></i> View All Time Sheets
+                    </a>
+                </p>
+                {% else %}
+                <p class="text-muted text-center py-3">
+                    <i class="fas fa-info-circle me-1"></i>
+                    No time sheets yet. Start logging work!
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

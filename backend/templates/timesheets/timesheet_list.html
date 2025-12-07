@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Time Sheets - Cranes Management{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="fas fa-clock me-2 text-info"></i>Time Sheets</h1>
+        <p>{{ timesheets.count }} total entries</p>
+    </div>
+    <a href="{% url 'timesheet_create' %}" class="btn btn-info text-white">
+        <i class="fas fa-plus me-1"></i> New Entry
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if timesheets %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Driver</th>
+                        <th>Crane</th>
+                        <th>Client</th>
+                        <th>Hours</th>
+                        <th>Shift</th>
+                        <th>Revenue</th>
+                        <th>Driver Wage</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ts in timesheets %}
+                    <tr>
+                        <td class="fw-medium">{{ ts.date|date:"M d, Y" }}</td>
+                        <td>{{ ts.driver.name }}</td>
+                        <td>{{ ts.crane.name }}</td>
+                        <td>{{ ts.client.name }}</td>
+                        <td>
+                            <span class="badge bg-secondary">{{ ts.total_hours|floatformat:1 }}h</span>
+                            {% if ts.overtime_hours > 0 %}
+                            <span class="badge bg-warning text-dark">+{{ ts.overtime_hours|floatformat:1 }} OT</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if ts.shift_type == '12h' %}bg-danger{% elif ts.shift_type == '9h' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                {{ ts.shift_type }}
+                            </span>
+                        </td>
+                        <td class="text-success fw-medium">{{ ts.revenue|floatformat:0 }} EGP</td>
+                        <td>{{ ts.driver_wage|floatformat:0 }} EGP</td>
+                        <td class="text-end">
+                            <a href="{% url 'timesheet_edit' ts.id %}" class="btn btn-sm btn-outline-primary btn-action" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'timesheet_delete' ts.id %}" class="btn btn-sm btn-outline-danger btn-action" 
+                               data-confirm="Are you sure you want to delete this time sheet?" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-clock"></i>
+            <h5>No time sheets found</h5>
+            <p class="text-muted">Start logging work by creating your first entry</p>
+            <a href="{% url 'timesheet_create' %}" class="btn btn-info text-white">
+                <i class="fas fa-plus me-1"></i> New Entry
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

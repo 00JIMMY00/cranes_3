@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports - Cranes Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-file-pdf me-2 text-danger"></i>Reports</h1>
+    <p>Generate PDF invoices and wage slips</p>
+</div>
+
+<div class="row">
+    <!-- Invoice Generation -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-file-invoice-dollar me-2"></i>Client Invoice</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Generate a PDF invoice for a client showing all time sheet entries for a specific month.</p>
+                
+                <form action="{% url 'generate_invoice' %}" method="get" target="_blank">
+                    <div class="mb-3">
+                        <label for="invoice_client" class="form-label">Client <span class="text-danger">*</span></label>
+                        <select name="client" id="invoice_client" class="form-select" required>
+                            <option value="">Select Client</option>
+                            {% for client in clients %}
+                            <option value="{{ client.id }}">{{ client.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="invoice_month" class="form-label">Month <span class="text-danger">*</span></label>
+                            <select name="month" id="invoice_month" class="form-select" required>
+                                {% for num, name in months %}
+                                <option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="invoice_year" class="form-label">Year <span class="text-danger">*</span></label>
+                            <select name="year" id="invoice_year" class="form-select" required>
+                                {% for y in years %}
+                                <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-download me-1"></i> Generate Invoice PDF
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Wage Slip Generation -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-money-check-alt me-2"></i>Driver Wage Slip</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Generate a PDF wage slip for a driver showing earnings, loans, and net payable for a specific month.</p>
+                
+                <form action="{% url 'generate_wage_slip' %}" method="get" target="_blank">
+                    <div class="mb-3">
+                        <label for="wage_driver" class="form-label">Driver <span class="text-danger">*</span></label>
+                        <select name="driver" id="wage_driver" class="form-select" required>
+                            <option value="">Select Driver</option>
+                            {% for driver in drivers %}
+                            <option value="{{ driver.id }}">{{ driver.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="wage_month" class="form-label">Month <span class="text-danger">*</span></label>
+                            <select name="month" id="wage_month" class="form-select" required>
+                                {% for num, name in months %}
+                                <option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="wage_year" class="form-label">Year <span class="text-danger">*</span></label>
+                            <select name="year" id="wage_year" class="form-select" required>
+                                {% for y in years %}
+                                <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-download me-1"></i> Generate Wage Slip PDF
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Info -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Report Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-file-invoice-dollar text-primary me-2"></i>Invoice Contents:</h6>
+                        <ul class="text-muted">
+                            <li>Client name and address</li>
+                            <li>All time sheet entries for the selected month</li>
+                            <li>Date, crane, driver, hours, and amount for each entry</li>
+                            <li>Total amount due</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-money-check-alt text-success me-2"></i>Wage Slip Contents:</h6>
+                        <ul class="text-muted">
+                            <li>Driver name and base salary</li>
+                            <li>All earnings from time sheets</li>
+                            <li>All loan deductions for the month</li>
+                            <li>Net payable amount (Earnings - Loans)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if timesheet %}Edit{% else %}New{% endif %} Time Sheet - Cranes Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>
+        <i class="fas fa-{% if timesheet %}edit{% else %}plus{% endif %} me-2 text-info"></i>
+        {% if timesheet %}Edit Time Sheet{% else %}New Time Sheet Entry{% endif %}
+    </h1>
+    <p>{% if timesheet %}Update work log details{% else %}Log a new work entry{% endif %}</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" id="timesheet-form">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="date" class="form-label">Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="date" name="date" 
+                                   value="{% if timesheet %}{{ timesheet.date|date:'Y-m-d' }}{% else %}{{ today }}{% endif %}" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="client" class="form-label">Client <span class="text-danger">*</span></label>
+                            <select class="form-select" id="client" name="client" required>
+                                <option value="">Select Client...</option>
+                                {% for client in clients %}
+                                <option value="{{ client.id }}" {% if timesheet.client_id == client.id %}selected{% endif %}>
+                                    {{ client.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="driver" class="form-label">Driver <span class="text-danger">*</span></label>
+                            <select class="form-select" id="driver" name="driver" required onchange="calculatePreview()">
+                                <option value="">Select Driver...</option>
+                                {% for driver in drivers %}
+                                <option value="{{ driver.id }}" data-salary="{{ driver.base_salary }}" 
+                                        {% if timesheet.driver_id == driver.id %}selected{% endif %}>
+                                    {{ driver.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="crane" class="form-label">Crane <span class="text-danger">*</span></label>
+                            <select class="form-select" id="crane" name="crane" required onchange="calculatePreview()">
+                                <option value="">Select Crane...</option>
+                                {% for crane in cranes %}
+                                <option value="{{ crane.id }}" 
+                                        data-rate8="{{ crane.rate_8h }}"
+                                        data-rate9="{{ crane.rate_9h }}"
+                                        data-rate12="{{ crane.rate_12h }}"
+                                        data-subrented="{{ crane.is_subrented|yesno:'true,false' }}"
+                                        data-ownercost="{{ crane.owner_cost }}"
+                                        {% if timesheet.crane_id == crane.id %}selected{% endif %}>
+                                    {{ crane.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    <h6 class="text-muted mb-3"><i class="fas fa-clock me-2"></i>Work Hours</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="start_time" class="form-label">Start Time <span class="text-danger">*</span></label>
+                            <input type="time" class="form-control" id="start_time" name="start_time" 
+                                   value="{% if timesheet %}{{ timesheet.start_time|time:'H:i' }}{% else %}08:00{% endif %}" 
+                                   required onchange="calculatePreview()">
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="end_time" class="form-label">End Time <span class="text-danger">*</span></label>
+                            <input type="time" class="form-control" id="end_time" name="end_time" 
+                                   value="{% if timesheet %}{{ timesheet.end_time|time:'H:i' }}{% else %}16:00{% endif %}" 
+                                   required onchange="calculatePreview()">
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Calculated Hours</label>
+                            <div class="d-flex gap-2">
+                                <span class="badge bg-secondary fs-6 py-2 px-3" id="total-hours">0h</span>
+                                <span class="badge bg-warning text-dark fs-6 py-2 px-3" id="overtime-hours" style="display: none;">+0 OT</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Live Calculation Preview -->
+                    <div class="card bg-light border-0 mb-4" id="calculation-preview">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="fas fa-calculator me-2"></i>Calculation Preview</h6>
+                            <div class="row text-center">
+                                <div class="col-md-3">
+                                    <small class="text-muted d-block">Shift Type</small>
+                                    <span class="badge bg-info fs-6" id="preview-shift">--</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted d-block">Revenue</small>
+                                    <strong class="text-success fs-5" id="preview-revenue">-- EGP</strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted d-block">Driver Wage</small>
+                                    <strong class="text-primary fs-5" id="preview-wage">-- EGP</strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted d-block">Net Profit</small>
+                                    <strong class="text-dark fs-5" id="preview-profit">-- EGP</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2" 
+                                  placeholder="Optional notes...">{{ timesheet.notes|default:'' }}</textarea>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-info text-white">
+                            <i class="fas fa-save me-1"></i> {% if timesheet %}Update{% else %}Save{% endif %} Time Sheet
+                        </button>
+                        <a href="{% url 'timesheet_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-info-circle me-2"></i>How It Works
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        <strong>8h shift:</strong> Uses 8-hour rate
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        <strong>9h shift:</strong> Uses 9-hour rate
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        <strong>12h shift:</strong> Uses 12-hour rate
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-calculator text-info me-2"></i>
+                        Overtime = Hours beyond 8h
+                    </li>
+                    <li>
+                        <i class="fas fa-money-bill text-warning me-2"></i>
+                        Driver wage includes OT bonus (1.5x)
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function calculatePreview() {
+    const startTime = document.getElementById('start_time').value;
+    const endTime = document.getElementById('end_time').value;
+    const craneSelect = document.getElementById('crane');
+    const driverSelect = document.getElementById('driver');
+    
+    if (!startTime || !endTime) return;
+    
+    // Parse times
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+    
+    let startMinutes = startH * 60 + startM;
+    let endMinutes = endH * 60 + endM;
+    
+    // Handle overnight
+    if (endMinutes <= startMinutes) {
+        endMinutes += 24 * 60;
+    }
+    
+    const totalMinutes = endMinutes - startMinutes;
+    const totalHours = totalMinutes / 60;
+    
+    // Update hours display
+    document.getElementById('total-hours').textContent = totalHours.toFixed(1) + 'h';
+    
+    // Calculate overtime
+    let overtime = 0;
+    let shiftType = '8h';
+    
+    if (totalHours <= 8) {
+        shiftType = '8h';
+        overtime = 0;
+    } else if (totalHours <= 9) {
+        shiftType = '9h';
+        overtime = totalHours - 8;
+    } else {
+        shiftType = '12h';
+        overtime = totalHours - 8;
+    }
+    
+    const otBadge = document.getElementById('overtime-hours');
+    if (overtime > 0) {
+        otBadge.textContent = '+' + overtime.toFixed(1) + ' OT';
+        otBadge.style.display = 'inline-block';
+    } else {
+        otBadge.style.display = 'none';
+    }
+    
+    // Update shift type
+    document.getElementById('preview-shift').textContent = shiftType;
+    
+    // Calculate revenue from crane
+    let revenue = 0;
+    if (craneSelect.value) {
+        const option = craneSelect.options[craneSelect.selectedIndex];
+        if (shiftType === '8h') {
+            revenue = parseFloat(option.dataset.rate8) || 0;
+        } else if (shiftType === '9h') {
+            revenue = parseFloat(option.dataset.rate9) || 0;
+        } else {
+            revenue = parseFloat(option.dataset.rate12) || 0;
+        }
+        document.getElementById('preview-revenue').textContent = revenue.toLocaleString() + ' EGP';
+    } else {
+        document.getElementById('preview-revenue').textContent = '-- EGP';
+    }
+    
+    // Calculate driver wage
+    let driverWage = 0;
+    if (driverSelect.value) {
+        const option = driverSelect.options[driverSelect.selectedIndex];
+        const monthlySalary = parseFloat(option.dataset.salary) || 0;
+        const dailyRate = monthlySalary / 30;
+        const overtimeRate = (dailyRate / 8) * 1.5;
+        driverWage = dailyRate + (overtime * overtimeRate);
+        document.getElementById('preview-wage').textContent = Math.round(driverWage).toLocaleString() + ' EGP';
+    } else {
+        document.getElementById('preview-wage').textContent = '-- EGP';
+    }
+    
+    // Calculate profit
+    if (revenue > 0 && driverWage > 0) {
+        const profit = revenue - driverWage;
+        document.getElementById('preview-profit').textContent = Math.round(profit).toLocaleString() + ' EGP';
+    } else {
+        document.getElementById('preview-profit').textContent = '-- EGP';
+    }
+}
+
+// Initial calculation
+document.addEventListener('DOMContentLoaded', calculatePreview);
+</script>
+{% endblock %}

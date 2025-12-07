@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Monthly Time Sheets - Cranes Management{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="fas fa-calendar-alt me-2 text-info"></i>Monthly Time Sheets</h1>
+        <p>{{ sheets.count }} total sheets</p>
+    </div>
+    <a href="{% url 'monthly_sheet_create' %}" class="btn btn-info text-white">
+        <i class="fas fa-plus me-1"></i> New Monthly Sheet
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if sheets %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Month/Year</th>
+                        <th>Client</th>
+                        <th>Crane</th>
+                        <th>Driver</th>
+                        <th>Location</th>
+                        <th>Total Hours</th>
+                        <th>Revenue</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sheet in sheets %}
+                    <tr>
+                        <td class="fw-medium">
+                            <a href="{% url 'monthly_sheet_detail' sheet.pk %}" class="text-decoration-none">
+                                {{ sheet.get_month_display }} {{ sheet.year }}
+                            </a>
+                        </td>
+                        <td>{{ sheet.client.name }}</td>
+                        <td>{{ sheet.crane.name }}</td>
+                        <td>{{ sheet.driver.name }}</td>
+                        <td>{{ sheet.location|default:"—" }}</td>
+                        <td>
+                            <span class="badge bg-secondary">{{ sheet.total_operating_hours|floatformat:1 }}h</span>
+                        </td>
+                        <td class="text-success fw-medium">{{ sheet.total_revenue|floatformat:0 }} EGP</td>
+                        <td class="text-end">
+                            <a href="{% url 'monthly_sheet_detail' sheet.pk %}" class="btn btn-sm btn-outline-primary btn-action" title="View/Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'monthly_sheet_delete' sheet.pk %}" class="btn btn-sm btn-outline-danger btn-action" 
+                               data-confirm="Are you sure you want to delete this monthly sheet?" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-calendar-alt"></i>
+            <h5>No monthly sheets found</h5>
+            <p class="text-muted">Create your first monthly time sheet</p>
+            <a href="{% url 'monthly_sheet_create' %}" class="btn btn-info text-white">
+                <i class="fas fa-plus me-1"></i> New Monthly Sheet
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

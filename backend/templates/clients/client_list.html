@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Clients - Cranes Management{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="fas fa-building me-2 text-success"></i>Clients</h1>
+        <p>{{ clients.count }} total clients</p>
+    </div>
+    <a href="{% url 'client_create' %}" class="btn btn-success">
+        <i class="fas fa-plus me-1"></i> Add Client
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if clients %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Contact</th>
+                        <th>Address</th>
+                        <th>Created</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for client in clients %}
+                    <tr>
+                        <td class="fw-medium">{{ client.name }}</td>
+                        <td>
+                            {% if client.phone %}
+                            <div><i class="fas fa-phone me-1 text-muted"></i> {{ client.phone }}</div>
+                            {% endif %}
+                            {% if client.email %}
+                            <div><i class="fas fa-envelope me-1 text-muted"></i> {{ client.email }}</div>
+                            {% endif %}
+                            {% if not client.phone and not client.email %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if client.address %}
+                            <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ client.address }}">
+                                <i class="fas fa-map-marker-alt me-1 text-muted"></i>{{ client.address }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ client.created_at|date:"M d, Y" }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'client_edit' client.id %}" class="btn btn-sm btn-outline-primary btn-action" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'client_delete' client.id %}" class="btn btn-sm btn-outline-danger btn-action" 
+                               data-confirm="Are you sure you want to delete {{ client.name }}?" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-building"></i>
+            <h5>No clients found</h5>
+            <p class="text-muted">Get started by adding your first client</p>
+            <a href="{% url 'client_create' %}" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i> Add Client
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

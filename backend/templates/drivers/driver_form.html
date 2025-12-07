@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if driver %}Edit{% else %}Add{% endif %} Driver - Cranes Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>
+        <i class="fas fa-{% if driver %}edit{% else %}user-plus{% endif %} me-2 text-primary"></i>
+        {% if driver %}Edit Driver{% else %}Add New Driver{% endif %}
+    </h1>
+    <p>{% if driver %}Update driver information{% else %}Enter driver details{% endif %}</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Driver Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               value="{{ driver.name|default:'' }}" required placeholder="Enter driver name">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="base_salary" class="form-label">Base Salary (EGP)</label>
+                        <input type="number" class="form-control" id="base_salary" name="base_salary" 
+                               value="{{ driver.base_salary|default:'0' }}" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    
+                    {% if driver %}
+                    <div class="mb-3">
+                        <label class="form-label">Current Balance</label>
+                        <input type="text" class="form-control" value="{{ driver.current_balance }} EGP" disabled>
+                        <small class="text-muted">Balance is calculated automatically from time sheets</small>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i> {% if driver %}Update{% else %}Save{% endif %} Driver
+                        </button>
+                        <a href="{% url 'driver_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Cranes - Cranes Management{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="fas fa-truck me-2 text-warning"></i>Cranes</h1>
+        <p>{{ cranes.count }} total cranes</p>
+    </div>
+    <a href="{% url 'crane_create' %}" class="btn btn-warning">
+        <i class="fas fa-plus me-1"></i> Add Crane
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if cranes %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>8h Rate</th>
+                        <th>9h Rate</th>
+                        <th>12h Rate</th>
+                        <th>Status</th>
+                        <th>Owner Cost</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for crane in cranes %}
+                    <tr>
+                        <td class="fw-medium">{{ crane.name }}</td>
+                        <td>{{ crane.rate_8h|floatformat:0 }} EGP</td>
+                        <td>{{ crane.rate_9h|floatformat:0 }} EGP</td>
+                        <td>{{ crane.rate_12h|floatformat:0 }} EGP</td>
+                        <td>
+                            {% if crane.is_subrented %}
+                            <span class="badge bg-warning text-dark">Sub-rented</span>
+                            {% else %}
+                            <span class="badge bg-success">Owned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if crane.is_subrented %}
+                            {{ crane.owner_cost|floatformat:0 }} EGP
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'crane_edit' crane.id %}" class="btn btn-sm btn-outline-primary btn-action" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'crane_delete' crane.id %}" class="btn btn-sm btn-outline-danger btn-action" 
+                               data-confirm="Are you sure you want to delete {{ crane.name }}?" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-truck"></i>
+            <h5>No cranes found</h5>
+            <p class="text-muted">Get started by adding your first crane</p>
+            <a href="{% url 'crane_create' %}" class="btn btn-warning">
+                <i class="fas fa-plus me-1"></i> Add Crane
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
