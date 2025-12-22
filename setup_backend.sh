@@ -9,10 +9,8 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Install dependencies
-pip install django djangorestframework psycopg2-binary python-dotenv django-cors-headers
+pip install -r requirements.txt
 
-# Freeze requirements
-pip freeze > requirements.txt
 
 # Initialize Django Project (if not exists)
 if [ ! -f "backend/manage.py" ]; then

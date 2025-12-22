@@ -1,136 +1,181 @@
 {% extends 'base.html' %}
 
-{% block title %}New Monthly Time Sheet - Cranes Management{% endblock %}
+{% block title %}كشف حضور جديد - Cranes Management{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1><i class="fas fa-plus me-2 text-info"></i>New Monthly Time Sheet</h1>
-    <p>Create a new monthly sheet matching your hard copy format</p>
+    <h1><i class="fas fa-plus me-2 text-info"></i>كشف حضور جديد</h1>
+    <p>إنشاء كشف حضور جديد بنطاق تاريخ مخصص</p>
 </div>
 
 <div class="row">
     <div class="col-lg-8">
         <div class="card">
             <div class="card-header">
-                <i class="fas fa-file-alt me-2"></i>Sheet Header Information
+                <i class="fas fa-file-alt me-2"></i>بيانات الكشف
             </div>
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="client" class="form-label">Project/Customer <span class="text-danger">*</span></label>
+                            <label for="client" class="form-label">العميل <span class="text-danger">*</span></label>
                             <select class="form-select" id="client" name="client" required>
-                                <option value="">Select Client...</option>
+                                <option value="">اختر العميل...</option>
                                 {% for client in clients %}
-                                <option value="{{ client.id }}">{{ client.name }}</option>
+                                <option value="{{ client.id }}" {% if form_data.client == client.id|stringformat:"s" %}selected{% endif %}>{{ client.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        
+
                         <div class="col-md-6 mb-3">
-                            <label for="crane" class="form-label">Machine/Equipment <span class="text-danger">*</span></label>
+                            <label for="crane" class="form-label">المعدة <span class="text-danger">*</span></label>
                             <select class="form-select" id="crane" name="crane" required>
-                                <option value="">Select Crane...</option>
+                                <option value="">اختر المعدة...</option>
                                 {% for crane in cranes %}
-                                <option value="{{ crane.id }}">{{ crane.name }}</option>
+                                <option value="{{ crane.id }}" {% if form_data.crane == crane.id|stringformat:"s" %}selected{% endif %}>{{ crane.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="driver" class="form-label">Operator <span class="text-danger">*</span></label>
+                            <label for="driver" class="form-label">السائق <span class="text-danger">*</span></label>
                             <select class="form-select" id="driver" name="driver" required>
-                                <option value="">Select Driver...</option>
+                                <option value="">اختر السائق...</option>
                                 {% for driver in drivers %}
-                                <option value="{{ driver.id }}">{{ driver.name }}</option>
+                                <option value="{{ driver.id }}" {% if form_data.driver == driver.id|stringformat:"s" %}selected{% endif %}>{{ driver.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        
+
                         <div class="col-md-6 mb-3">
-                            <label for="location" class="form-label">Location/Site</label>
-                            <input type="text" class="form-control" id="location" name="location" 
-                                   placeholder="Enter work location">
+                            <label for="location" class="form-label">الموقع</label>
+                            <input type="text" class="form-control" id="location" name="location"
+                                placeholder="موقع العمل" value="{{ form_data.location|default:'' }}">
                         </div>
                     </div>
-                    
-                    <hr class="my-4">
-                    <h6 class="text-muted mb-3"><i class="fas fa-calendar me-2"></i>Period</h6>
-                    
+
                     <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="month" class="form-label">Month <span class="text-danger">*</span></label>
-                            <select class="form-select" id="month" name="month" required>
-                                <option value="1" {% if current_month == 1 %}selected{% endif %}>January / يناير</option>
-                                <option value="2" {% if current_month == 2 %}selected{% endif %}>February / فبراير</option>
-                                <option value="3" {% if current_month == 3 %}selected{% endif %}>March / مارس</option>
-                                <option value="4" {% if current_month == 4 %}selected{% endif %}>April / أبريل</option>
-                                <option value="5" {% if current_month == 5 %}selected{% endif %}>May / مايو</option>
-                                <option value="6" {% if current_month == 6 %}selected{% endif %}>June / يونيو</option>
-                                <option value="7" {% if current_month == 7 %}selected{% endif %}>July / يوليو</option>
-                                <option value="8" {% if current_month == 8 %}selected{% endif %}>August / أغسطس</option>
-                                <option value="9" {% if current_month == 9 %}selected{% endif %}>September / سبتمبر</option>
-                                <option value="10" {% if current_month == 10 %}selected{% endif %}>October / أكتوبر</option>
-                                <option value="11" {% if current_month == 11 %}selected{% endif %}>November / نوفمبر</option>
-                                <option value="12" {% if current_month == 12 %}selected{% endif %}>December / ديسمبر</option>
-                            </select>
+                        <div class="col-md-6 mb-3">
+                            <label for="price_per_day" class="form-label">سعر اليوم <span
+                                    class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" step="1" class="form-control" id="price_per_day"
+                                    name="price_per_day" value="{{ form_data.price_per_day|default:'0' }}" required>
+                                <span class="input-group-text">ج.م</span>
+                            </div>
+                            <div class="form-text">سيتم ضرب هذا السعر في عدد الورديات (أيام العمل) لحساب الإيراد.</div>
                         </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="year" class="form-label">Year <span class="text-danger">*</span></label>
-                            <select class="form-select" id="year" name="year" required>
-                                {% for y in years %}
-                                <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="supervisor_name" class="form-label">Supervisor</label>
-                            <input type="text" class="form-control" id="supervisor_name" name="supervisor_name" 
-                                   placeholder="Supervisor name">
+                        <div class="col-md-6 mb-3">
+                            <label for="driver_count" class="form-label">عدد السائقين</label>
+                            <input type="number" class="form-control" id="driver_count" name="driver_count"
+                                value="{{ form_data.driver_count|default:'1' }}" min="1" max="10">
+                            <div class="form-text">إذا كان أكثر من 1، يمكنك تحديد سائق مختلف لكل وردية.</div>
                         </div>
                     </div>
-                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="supervisor_name" class="form-label">المشرف المسؤول</label>
+                            <input type="text" class="form-control" id="supervisor_name" name="supervisor_name"
+                                placeholder="اسم المشرف" value="{{ form_data.supervisor_name|default:'' }}">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="text-muted mb-3"><i class="fas fa-calendar me-2"></i>الفترة الزمنية</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="start_date" class="form-label">من تاريخ <span
+                                    class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="start_date" name="start_date"
+                                value="{{ form_data.start_date|default:today }}" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="end_date" class="form-label">إلى تاريخ <span
+                                    class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="end_date" name="end_date"
+                                value="{{ form_data.end_date|default:'' }}" required>
+                        </div>
+                    </div>
+
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-info text-white">
-                            <i class="fas fa-plus me-1"></i> Create Sheet
+                            <i class="fas fa-plus me-1"></i> إنشاء الكشف
                         </button>
                         <a href="{% url 'monthly_sheet_list' %}" class="btn btn-outline-secondary">
-                            <i class="fas fa-times me-1"></i> Cancel
+                            <i class="fas fa-times me-1"></i> إلغاء
                         </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-4">
         <div class="card">
             <div class="card-header">
-                <i class="fas fa-info-circle me-2"></i>About Monthly Sheets
+                <i class="fas fa-info-circle me-2"></i>عن كشوف الحضور
             </div>
             <div class="card-body">
                 <p class="small text-muted">
-                    Monthly time sheets match your hard copy format with:
+                    كشوف الحضور تتضمن:
                 </p>
                 <ul class="small text-muted">
-                    <li>31 rows for daily entries</li>
-                    <li>From/To time columns</li>
-                    <li>Operating hours (auto-calculated)</li>
-                    <li>Trips counter</li>
-                    <li>Notes field</li>
-                    <li>Attendance hours</li>
+                    <li>صفوف لكل يوم في الفترة المحددة</li>
+                    <li>أعمدة من/إلى للوقت</li>
+                    <li>ساعات التشغيل (تحسب تلقائياً)</li>
+                    <li>عدد الورديات = ساعات التشغيل ÷ ساعات الوردية</li>
+                    <li>الإيراد = سعر اليوم × عدد الورديات</li>
+                    <li>ملاحظات</li>
                 </ul>
                 <p class="small text-muted mb-0">
-                    After creating, you'll be able to fill in daily data.
+                    بعد الإنشاء، يمكنك ملء البيانات اليومية.
                 </p>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="errorModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>خطأ في الإنشاء
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-times-circle text-danger fs-1 me-3"></i>
+                    <div>
+                        <p class="mb-2"><strong>لا يمكن إنشاء كشف الحضور:</strong></p>
+                        <p class="text-muted mb-0" id="errorMessageText">{{ error_message }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-edit me-1"></i>تعديل البيانات
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if error_message %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+        errorModal.show();
+    });
+</script>
+{% endif %}
 {% endblock %}

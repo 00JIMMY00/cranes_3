@@ -135,13 +135,19 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+# Static files root for production (collectstatic output)
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 # Login settings
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
-# CSRF settings for development
+# CSRF settings - configurable via environment for production
+_csrf_origins = os.getenv('CSRF_TRUSTED_ORIGINS', '')
 CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in _csrf_origins.split(',') if origin.strip()
+] if _csrf_origins else [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
     'http://127.0.0.1:*',

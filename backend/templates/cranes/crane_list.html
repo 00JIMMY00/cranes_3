@@ -21,9 +21,6 @@
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>8h Rate</th>
-                        <th>9h Rate</th>
-                        <th>12h Rate</th>
                         <th>Status</th>
                         <th>Owner Cost</th>
                         <th class="text-end">Actions</th>
@@ -32,10 +29,9 @@
                 <tbody>
                     {% for crane in cranes %}
                     <tr>
-                        <td class="fw-medium">{{ crane.name }}</td>
-                        <td>{{ crane.rate_8h|floatformat:0 }} EGP</td>
-                        <td>{{ crane.rate_9h|floatformat:0 }} EGP</td>
-                        <td>{{ crane.rate_12h|floatformat:0 }} EGP</td>
+                        <td class="fw-medium">
+                            <a href="{% url 'crane_detail' crane.id %}">{{ crane.name }}</a>
+                        </td>
                         <td>
                             {% if crane.is_subrented %}
                             <span class="badge bg-warning text-dark">Sub-rented</span>
@@ -51,11 +47,16 @@
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            <a href="{% url 'crane_edit' crane.id %}" class="btn btn-sm btn-outline-primary btn-action" title="Edit">
+                            <a href="{% url 'crane_detail' crane.id %}" class="btn btn-sm btn-outline-info btn-action"
+                                title="View">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'crane_edit' crane.id %}" class="btn btn-sm btn-outline-primary btn-action"
+                                title="Edit">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <a href="{% url 'crane_delete' crane.id %}" class="btn btn-sm btn-outline-danger btn-action" 
-                               data-confirm="Are you sure you want to delete {{ crane.name }}?" title="Delete">
+                            <a href="{% url 'crane_delete' crane.id %}" class="btn btn-sm btn-outline-danger btn-action"
+                                data-confirm="Are you sure you want to delete {{ crane.name }}?" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </a>
                         </td>

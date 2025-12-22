@@ -6,6 +6,7 @@
 
 ## User Story
 As the Owner, I want a monthly time sheet form that matches my hard copy sheets, So that I can digitize my existing workflow without changing how I record data.
+Also, I want to define a default hourly rate for the client that applies to all days but can be overridden manually per day.
 
 ## Acceptance Criteria
 - [x] **Given** I am on the "New Time Sheet" page
@@ -21,6 +22,12 @@ As the Owner, I want a monthly time sheet form that matches my hard copy sheets,
 - [x] **When** I save the sheet
 - [x] **Then** all daily data is processed and stored
 - [x] **And** totals are calculated for the month
+- [x] **Given** I am creating/editing a Monthly Time Sheet
+- [x] **When** I set the "Default Hourly Rate" for the client/sheet
+- [x] **Then** all "Hourly Rate" fields in the daily table are updated to this value (unless manually changed)
+- [x] **Given** the daily entries table
+- [x] **When** I calculate the total amount
+- [x] **Then** it uses (Operating Hours * Hourly Rate) for each specific day
 
 ## Technical Implementation Guide
 
@@ -33,6 +40,7 @@ Based on hard copy sheet format:
 - Operator Name (Driver FK)
 - Location/Site (text field)
 - Month/Year (date field)
+- Default Hourly Rate (Decimal)
 
 **Daily Entry Table (31 rows):**
 | Column | Arabic | Field Type |
@@ -46,6 +54,7 @@ Based on hard copy sheet format:
 | Trips | رحلات | Integer input |
 | Notes | البيان | Text input |
 | Attendance Hours | إجمالي ساعات الحضور | Decimal input |
+| Hourly Rate | سعر الساعة | Decimal input |
 
 **Footer:**
 - Supervisor signature field
@@ -63,6 +72,10 @@ Based on hard copy sheet format:
 - [x] **Task 9:** Add JavaScript for auto-calculating daily operating hours
 - [x] **Task 10:** Create monthly sheet list and detail views
 - [x] **Task 11:** Calculate monthly totals on save
+- [x] **Task 12:** Add `hourly_rate` to `DailyEntry` and `default_hourly_rate` to `MonthlyTimeSheet` models
+- [x] **Task 13:** Update forms and templates to include rate fields
+- [x] **Task 14:** Implement JS for auto-populating daily rates from default
+- [x] **Task 15:** Update total calculation logic to use daily rates
 
 ## Dev Agent Record
 **Files Created/Modified:**
@@ -88,3 +101,7 @@ Based on hard copy sheet format:
 - Bilingual support (English/Arabic) for column headers and weekday names
 - Friday rows highlighted in yellow (common weekend in Egypt)
 - Invalid days (e.g., day 31 in February) shown as disabled rows
+- Added `default_hourly_rate` to Monthly Sheet header and `hourly_rate` to daily entries (Story 2.1 Update)
+- Implemented auto-population of daily rates from default rate (in JS and Backend)
+- Preserved manual rate overrides when default rate changes
+- Updated revenue calculation to use daily specific rates instead of fixed shift rates

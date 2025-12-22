@@ -8,7 +8,7 @@
         <i class="fas fa-{% if crane %}edit{% else %}plus{% endif %} me-2 text-warning"></i>
         {% if crane %}Edit Crane{% else %}Add New Crane{% endif %}
     </h1>
-    <p>{% if crane %}Update crane information{% else %}Enter crane details and rates{% endif %}</p>
+    <p>{% if crane %}Update crane information{% else %}Enter crane details{% endif %}</p>
 </div>
 
 <div class="row">
@@ -17,57 +17,36 @@
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="name" class="form-label">Crane Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="name" name="name" 
-                                   value="{{ crane.name|default:'' }}" required placeholder="e.g., Liebherr 50t">
+                            <input type="text" class="form-control" id="name" name="name"
+                                value="{{ crane.name|default:'' }}" required placeholder="e.g., Liebherr 50t">
                         </div>
-                        
+
                         <div class="col-md-6 mb-3">
                             <div class="form-check mt-4 pt-2">
-                                <input type="checkbox" class="form-check-input" id="is_subrented" name="is_subrented"
-                                       {% if crane.is_subrented %}checked{% endif %} onchange="toggleOwnerCost()">
+                                <input type="checkbox" class="form-check-input" id="is_subrented" name="is_subrented" {{
+                                    crane.is_subrented|yesno:"checked," }} onchange="toggleOwnerCost()">
                                 <label class="form-check-label" for="is_subrented">
                                     <i class="fas fa-handshake me-1"></i> Is Sub-rented?
                                 </label>
                             </div>
                         </div>
                     </div>
-                    
-                    <hr class="my-4">
-                    <h6 class="text-muted mb-3"><i class="fas fa-money-bill me-2"></i>Rate Configuration</h6>
-                    
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="rate_8h" class="form-label">8 Hour Rate (EGP)</label>
-                            <input type="number" class="form-control" id="rate_8h" name="rate_8h" 
-                                   value="{{ crane.rate_8h|default:'0' }}" min="0" step="0.01" placeholder="0.00">
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="rate_9h" class="form-label">9 Hour Rate (EGP)</label>
-                            <input type="number" class="form-control" id="rate_9h" name="rate_9h" 
-                                   value="{{ crane.rate_9h|default:'0' }}" min="0" step="0.01" placeholder="0.00">
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="rate_12h" class="form-label">12 Hour Rate (EGP)</label>
-                            <input type="number" class="form-control" id="rate_12h" name="rate_12h" 
-                                   value="{{ crane.rate_12h|default:'0' }}" min="0" step="0.01" placeholder="0.00">
-                        </div>
-                    </div>
-                    
-                    <div class="row" id="owner_cost_row" style="{% if not crane.is_subrented %}display: none;{% endif %}">
+
+
+                    <div class="row" id="owner_cost_row"
+                        style="{% if not crane.is_subrented %}display: none;{% endif %}">
                         <div class="col-md-4 mb-3">
                             <label for="owner_cost" class="form-label">Owner Cost (EGP)</label>
-                            <input type="number" class="form-control" id="owner_cost" name="owner_cost" 
-                                   value="{{ crane.owner_cost|default:'0' }}" min="0" step="0.01" placeholder="0.00">
+                            <input type="number" class="form-control" id="owner_cost" name="owner_cost"
+                                value="{{ crane.owner_cost|default:'0' }}" min="0" step="0.01" placeholder="0.00">
                             <small class="text-muted">Cost paid to the crane owner</small>
                         </div>
                     </div>
-                    
+
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-warning">
                             <i class="fas fa-save me-1"></i> {% if crane %}Update{% else %}Save{% endif %} Crane
@@ -85,10 +64,10 @@
 
 {% block extra_js %}
 <script>
-function toggleOwnerCost() {
-    const checkbox = document.getElementById('is_subrented');
-    const ownerCostRow = document.getElementById('owner_cost_row');
-    ownerCostRow.style.display = checkbox.checked ? 'flex' : 'none';
-}
+    function toggleOwnerCost() {
+        const checkbox = document.getElementById('is_subrented');
+        const ownerCostRow = document.getElementById('owner_cost_row');
+        ownerCostRow.style.display = checkbox.checked ? 'flex' : 'none';
+    }
 </script>
 {% endblock %}

@@ -3,9 +3,6 @@ from django.db import models
 
 class Crane(models.Model):
     name = models.CharField(max_length=255)
-    rate_8h = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    rate_9h = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    rate_12h = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_subrented = models.BooleanField(default=False)
     owner_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)

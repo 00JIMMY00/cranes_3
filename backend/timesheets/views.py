@@ -134,12 +134,8 @@ def timesheet_calculate(request):
         if crane_id:
             try:
                 crane = Crane.objects.get(pk=crane_id)
-                if shift_type == '8h':
-                    result['revenue'] = float(crane.rate_8h)
-                elif shift_type == '9h':
-                    result['revenue'] = float(crane.rate_9h)
-                else:
-                    result['revenue'] = float(crane.rate_12h)
+                # Revenue calculation removed as crane rates are deprecated.
+                result['revenue'] = 0.0
                 
                 if crane.is_subrented:
                     result['commission'] = result['revenue'] - float(crane.owner_cost)
@@ -177,34 +173,71 @@ def monthly_sheet_list(request):
 @login_required
 def monthly_sheet_create(request):
     """Create a new monthly time sheet."""
+    from django.core.exceptions import ValidationError
+    
+    error_message = None
+    form_data = {}
+    
     if request.method == 'POST':
+        # Preserve form data for re-display on error
+        form_data = {
+            'client': request.POST.get('client', ''),
+            'crane': request.POST.get('crane', ''),
+            'driver': request.POST.get('driver', ''),
+            'location': request.POST.get('location', ''),
+            'start_date': request.POST.get('start_date', ''),
+            'end_date': request.POST.get('end_date', ''),
+            'supervisor_name': request.POST.get('supervisor_name', ''),
+            'price_per_day': request.POST.get('price_per_day', '0'),
+            'driver_count': request.POST.get('driver_count', '1'),
+        }
+        
         try:
-            month = int(request.POST.get('month'))
-            year = int(request.POST.get('year'))
+            from datetime import datetime as dt
+            start_date_str = request.POST.get('start_date')
+            end_date_str = request.POST.get('end_date')
+            price_per_day = request.POST.get('price_per_day', 0)
+            
+            # Parse date strings to date objects
+            start_date = dt.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = dt.strptime(end_date_str, '%Y-%m-%d').date()
             
             sheet = MonthlyTimeSheet.objects.create(
                 client_id=request.POST.get('client'),
                 crane_id=request.POST.get('crane'),
                 driver_id=request.POST.get('driver'),
                 location=request.POST.get('location', ''),
-                month=month,
-                year=year,
-                supervisor_name=request.POST.get('supervisor_name', '')
+                start_date=start_date,
+                end_date=end_date,
+                supervisor_name=request.POST.get('supervisor_name', ''),
+                price_per_day=int(price_per_day) if price_per_day else 0,
+                driver_count=int(request.POST.get('driver_count', 1)) or 1
             )
             
-            messages.success(request, f'Monthly sheet created for {sheet.get_month_display()} {year}')
+            messages.success(request, f'تم إنشاء كشف الحضور من {start_date_str} إلى {end_date_str}')
             return redirect('monthly_sheet_detail', pk=sheet.pk)
+        except ValidationError as e:
+            # Extract user-friendly error messages
+            if hasattr(e, 'message_dict'):
+                # Get all error messages and join them
+                error_parts = []
+                for field, msgs in e.message_dict.items():
+                    for msg in msgs:
+                        error_parts.append(msg)
+                error_message = ' '.join(error_parts)
+            else:
+                error_message = str(e)
         except Exception as e:
-            messages.error(request, f'Error creating sheet: {str(e)}')
+            error_message = f'حدث خطأ غير متوقع: {str(e)}'
     
     now = datetime.now()
     context = {
         'drivers': Driver.objects.all(),
         'cranes': Crane.objects.all(),
         'clients': Client.objects.all(),
-        'current_month': now.month,
-        'current_year': now.year,
-        'years': range(now.year - 1, now.year + 2),
+        'today': now.strftime('%Y-%m-%d'),
+        'form_data': form_data,
+        'error_message': error_message,
     }
     return render(request, 'timesheets/monthly_create.html', context)
 
@@ -215,9 +248,17 @@ def monthly_sheet_detail(request, pk):
     sheet = get_object_or_404(MonthlyTimeSheet.objects.select_related('driver', 'crane', 'client'), pk=pk)
     entries = sheet.daily_entries.all().order_by('day_number')
     
+    # Calculate driver stats
+    from django.db.models import Sum
+    driver_stats = entries.filter(operating_hours__gt=0).values('driver__name').annotate(
+        total_hours=Sum('operating_hours')
+    ).order_by('driver__name')
+
     context = {
         'sheet': sheet,
         'entries': entries,
+        'drivers': Driver.objects.all(),  # For driver dropdown when driver_count > 1
+        'driver_stats': driver_stats,
     }
     return render(request, 'timesheets/monthly_detail.html', context)
 
@@ -247,12 +288,14 @@ def daily_entry_update(request, pk):
         trips = request.POST.get('trips', 0)
         notes = request.POST.get('notes', '')
         attendance_hours = request.POST.get('attendance_hours', 0)
+        hourly_rate = request.POST.get('hourly_rate', 0)
         
         entry.from_time = from_time if from_time else None
         entry.to_time = to_time if to_time else None
         entry.trips = int(trips) if trips else 0
         entry.notes = notes
         entry.attendance_hours = float(attendance_hours) if attendance_hours else 0
+        entry.hourly_rate = float(hourly_rate) if hourly_rate else 0
         entry.save()
         
         return JsonResponse({
@@ -280,8 +323,9 @@ def monthly_sheet_save_all(request, pk):
     
     try:
         entries_updated = 0
+        # Use entry ID instead of day_number (supports multiple entries per day)
         for entry in sheet.daily_entries.filter(date__isnull=False):
-            prefix = f'entry_{entry.day_number}_'
+            prefix = f'entry_{entry.id}_'
             
             from_time = request.POST.get(f'{prefix}from_time', '').strip()
             from_period = request.POST.get(f'{prefix}from_period', 'AM')
@@ -290,21 +334,34 @@ def monthly_sheet_save_all(request, pk):
             trips = request.POST.get(f'{prefix}trips', '').strip()
             notes = request.POST.get(f'{prefix}notes', '').strip()
             attendance = request.POST.get(f'{prefix}attendance', '').strip()
+            hourly_rate = request.POST.get(f'{prefix}hourly_rate', '').strip()
+            driver_id = request.POST.get(f'{prefix}driver', '').strip()
             
             # Only update if there's any data
-            entry.from_time = from_time if from_time else None
+            entry.from_time = int(from_time) if from_time else None
             entry.from_period = from_period
-            entry.to_time = to_time if to_time else None
+            entry.to_time = int(to_time) if to_time else None
             entry.to_period = to_period
             entry.trips = int(trips) if trips else 0
             entry.notes = notes
             entry.attendance_hours = float(attendance) if attendance else 0
+            entry.hourly_rate = int(hourly_rate) if hourly_rate else 0
+            if driver_id:
+                entry.driver_id = int(driver_id)
             entry.save()
             entries_updated += 1
         
-        # Always update supervisor name
+        # Always update supervisor name, price per day, and shift divisor
         supervisor = request.POST.get('supervisor_name', '').strip()
+        price_per_day = request.POST.get('price_per_day', '').strip()
+        shift_divisor = request.POST.get('shift_divisor', '').strip()
+        
         sheet.supervisor_name = supervisor
+        # Save price_per_day (even if 0)
+        sheet.price_per_day = int(price_per_day) if price_per_day else 0
+        # Save shift_divisor (default to 8 if not provided)
+        sheet.shift_divisor = int(shift_divisor) if shift_divisor else 8
+            
         sheet.calculate_totals()
         sheet.save()
         
@@ -313,3 +370,76 @@ def monthly_sheet_save_all(request, pk):
         messages.error(request, f'خطأ في الحفظ: {str(e)}')
     
     return redirect('monthly_sheet_detail', pk=pk)
+
+
+@login_required
+def add_shift_entry(request, pk):
+    """AJAX endpoint to add a new shift entry for a specific day."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    
+    sheet = get_object_or_404(MonthlyTimeSheet, pk=pk)
+    
+    try:
+        day_number = int(request.POST.get('day_number'))
+        # Get an existing entry for that day to copy date/weekday info
+        existing_entry = sheet.daily_entries.filter(day_number=day_number).first()
+        
+        if not existing_entry:
+            return JsonResponse({'error': 'Day not found'}, status=404)
+        
+        # Create a new entry for the same day
+        new_entry = DailyEntry.objects.create(
+            monthly_sheet=sheet,
+            day_number=day_number,
+            date=existing_entry.date,
+            weekday=existing_entry.weekday,
+            weekday_ar=existing_entry.weekday_ar,
+            driver=sheet.driver,  # Default to sheet's driver
+            hourly_rate=0
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'entry_id': new_entry.id,
+            'day_number': day_number,
+            'date': new_entry.date.strftime('%d/%m/%Y') if new_entry.date else '',
+            'weekday_ar': new_entry.weekday_ar,
+            'driver_id': new_entry.driver_id
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+def delete_shift_entry(request, pk):
+    """AJAX endpoint to delete a shift entry."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    
+    entry = get_object_or_404(DailyEntry, pk=pk)
+    sheet = entry.monthly_sheet
+    day_number = entry.day_number
+    
+    # Don't delete if it's the only entry for that day
+    entries_for_day = sheet.daily_entries.filter(day_number=day_number).count()
+    if entries_for_day <= 1:
+        return JsonResponse({'error': 'Cannot delete the last entry for a day'}, status=400)
+    
+    try:
+        entry.delete()
+        sheet.calculate_totals()
+        sheet.save()
+        
+        return JsonResponse({
+            'success': True,
+            'monthly_totals': {
+                'operating_hours': float(sheet.total_operating_hours),
+                'attendance_hours': float(sheet.total_attendance_hours),
+                'shift_days': float(sheet.total_shift_days),
+                'revenue': float(sheet.total_revenue),
+                'driver_wage': float(sheet.total_driver_wage),
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)

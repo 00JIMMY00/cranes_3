@@ -18,4 +18,6 @@ urlpatterns = [
     
     # AJAX endpoints
     path('daily-entry/<int:pk>/update/', views.daily_entry_update, name='daily_entry_update'),
+    path('monthly-sheets/<int:pk>/add-shift/', views.add_shift_entry, name='add_shift_entry'),
+    path('daily-entry/<int:pk>/delete/', views.delete_shift_entry, name='delete_shift_entry'),
 ]

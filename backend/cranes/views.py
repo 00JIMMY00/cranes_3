@@ -4,6 +4,7 @@ from django.contrib import messages
 from rest_framework import viewsets
 from .models import Crane
 from .serializers import CraneSerializer
+from datetime import date
 
 
 class CraneViewSet(viewsets.ModelViewSet):
@@ -20,13 +21,54 @@ def crane_list(request):
 
 
 @login_required
+def crane_detail(request, pk):
+    """View crane details including assignment history."""
+    crane = get_object_or_404(Crane, pk=pk)
+    today = date.today()
+    
+    # Get all assignments for this crane
+    all_assignments = crane.monthly_sheets.select_related('client', 'driver').order_by('start_date')
+    
+    # Categorize assignments
+    present = []
+    future = []
+    history = []
+    
+    for assignment in all_assignments:
+        if assignment.start_date and assignment.end_date:
+            if assignment.start_date <= today <= assignment.end_date:
+                present.append(assignment)
+            elif assignment.start_date > today:
+                future.append(assignment)
+            elif assignment.end_date < today:
+                history.append(assignment)
+        elif assignment.start_date:
+            # No end_date, consider as ongoing if started
+            if assignment.start_date <= today:
+                present.append(assignment)
+            else:
+                future.append(assignment)
+        else:
+            # No dates set, put in history as legacy
+            history.append(assignment)
+    
+    # Sort history in reverse (most recent first)
+    history.reverse()
+    
+    return render(request, 'cranes/crane_detail.html', {
+        'crane': crane,
+        'present': present,
+        'future': future,
+        'history': history,
+        'today': today,
+    })
+
+
+@login_required
 def crane_create(request):
     if request.method == 'POST':
         Crane.objects.create(
             name=request.POST.get('name'),
-            rate_8h=request.POST.get('rate_8h', 0) or 0,
-            rate_9h=request.POST.get('rate_9h', 0) or 0,
-            rate_12h=request.POST.get('rate_12h', 0) or 0,
             is_subrented='is_subrented' in request.POST,
             owner_cost=request.POST.get('owner_cost', 0) or 0
         )
@@ -42,9 +84,6 @@ def crane_edit(request, pk):
     
     if request.method == 'POST':
         crane.name = request.POST.get('name')
-        crane.rate_8h = request.POST.get('rate_8h', 0) or 0
-        crane.rate_9h = request.POST.get('rate_9h', 0) or 0
-        crane.rate_12h = request.POST.get('rate_12h', 0) or 0
         crane.is_subrented = 'is_subrented' in request.POST
         crane.owner_cost = request.POST.get('owner_cost', 0) or 0
         crane.save()
@@ -61,3 +100,4 @@ def crane_delete(request, pk):
     crane.delete()
     messages.success(request, f'Crane "{name}" deleted successfully.')
     return redirect('crane_list')
+

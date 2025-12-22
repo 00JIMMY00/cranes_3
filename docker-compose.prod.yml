@@ -1,0 +1,97 @@
+# Production Docker Compose - Cranes Management System
+# Domain: cranes.wahet-elarab.com
+# Note: Caddy reverse proxy should be handled in a separate compose file
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: cranes_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-cranes_3_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-1qaz1qaz1qaz}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5446:5432"   # expose DB externally
+    networks:
+      - cranes_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-cranes_3_db}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Django Backend
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: cranes_backend
+    restart: unless-stopped
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY:?Secret key is required}
+      - DB_NAME=${DB_NAME:-cranes_3_db}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-1qaz1qaz1qaz}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - ALLOWED_HOSTS=cranes.wahet-elarab.com,localhost,127.0.0.1,backend
+      - CSRF_TRUSTED_ORIGINS=https://cranes.wahet-elarab.com,http://localhost
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cranes_network
+    expose:
+      - "8000"
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # React/Vite Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=https://cranes.wahet-elarab.com/api
+    container_name: cranes_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - cranes_network
+    expose:
+      - "80"
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_data:
+    driver: local
+  static_volume:
+    driver: local
+  media_volume:
+    driver: local
+
+networks:
+  cranes_network:
+    driver: bridge
+    name: cranes_network

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}أمر تشغيل معدة - {{ sheet.get_month_display_ar }} {{ sheet.year }}{% endblock %}
+{% block title %}كشف حضور - {{ sheet.start_date|date:"d/m/Y" }} إلى {{ sheet.end_date|date:"d/m/Y" }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -8,29 +8,33 @@
         direction: rtl;
         font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
     }
-    
+
     /* Info fields at top */
     .info-row {
         display: flex;
         justify-content: space-between;
         margin-bottom: 10px;
         gap: 20px;
+        flex-wrap: wrap;
     }
+
     .info-field {
         display: flex;
         align-items: center;
         gap: 10px;
     }
+
     .info-field label {
         font-weight: bold;
         white-space: nowrap;
     }
+
     .info-field .value {
         border-bottom: 1px solid #333;
         min-width: 150px;
         padding: 2px 10px;
     }
-    
+
     /* Main table */
     .timesheet-table {
         width: 100%;
@@ -38,6 +42,7 @@
         font-size: 0.85rem;
         direction: rtl;
     }
+
     .timesheet-table th,
     .timesheet-table td {
         border: 1px solid #333;
@@ -45,18 +50,21 @@
         text-align: center;
         vertical-align: middle;
     }
+
     .timesheet-table thead th {
         background: #f5f5f5;
         font-weight: bold;
         font-size: 0.75rem;
     }
+
     .timesheet-table thead th.sub-header {
         font-size: 0.7rem;
         background: #fafafa;
     }
-    
+
     /* Input styling */
-    .timesheet-table input {
+    .timesheet-table input,
+    .timesheet-table select {
         width: 100%;
         border: none;
         text-align: center;
@@ -64,46 +72,77 @@
         font-size: 0.8rem;
         background: transparent;
     }
-    .timesheet-table input:focus {
+
+    .timesheet-table input:focus,
+    .timesheet-table select:focus {
         outline: 2px solid #1a5f7a;
         background: #fff;
     }
+
     .timesheet-table input[type="time"] {
         width: 70px;
     }
-    
+
     /* Row styling */
     .friday-row {
         background-color: #fff3cd !important;
     }
+
     .has-data {
         background-color: #d4edda !important;
     }
-    
+
+    .split-shift-row {
+        background-color: #e8f4f8 !important;
+    }
+
     /* Totals row */
     .totals-row {
         background: #e9ecef !important;
         font-weight: bold;
     }
+
     .totals-row td {
         font-size: 0.9rem;
     }
-    
+
     /* Column widths */
-    .col-num { width: 30px; }
-    .col-day { width: 60px; }
-    .col-date { width: 80px; }
-    .col-time { width: 100px; }
+    .col-num {
+        width: 30px;
+    }
+
+    .col-day {
+        width: 60px;
+    }
+
+    .col-date {
+        width: 80px;
+    }
+
+    .col-time {
+        width: 100px;
+    }
+
+    .col-driver {
+        width: 120px;
+    }
+
+    .col-actions {
+        width: 40px;
+    }
+
     .time-input-group {
         display: flex;
         gap: 2px;
         align-items: center;
         justify-content: center;
     }
+
     .time-input-group input {
         width: 40px !important;
         text-align: center;
     }
+
     .time-input-group select {
         width: 45px;
         font-size: 0.75rem;
@@ -113,15 +152,49 @@
         cursor: pointer;
         text-align: center;
     }
-    .col-trips { width: 40px; }
-    .col-notes { width: 100px; }
-    .col-attendance { width: 50px; }
-    
+
+    .col-notes {
+        width: 120px;
+    }
+
+    .col-attendance {
+        width: 50px;
+    }
+
+    .col-hours {
+        width: 50px;
+    }
+
+    .driver-select {
+        width: 100%;
+        font-size: 0.75rem;
+        padding: 2px;
+    }
+
+    .btn-add-shift {
+        font-size: 0.7rem;
+        padding: 1px 4px;
+    }
+
+    .btn-delete-shift {
+        font-size: 0.7rem;
+        padding: 1px 4px;
+        color: #dc3545;
+    }
+
     /* Print styles */
     @media print {
-        .no-print { display: none !important; }
-        .sheet-container { padding: 0; }
-        .timesheet-table { font-size: 0.7rem; }
+        .no-print {
+            display: none !important;
+        }
+
+        .sheet-container {
+            padding: 0;
+        }
+
+        .timesheet-table {
+            font-size: 0.7rem;
+        }
     }
 </style>
 {% endblock %}
@@ -143,53 +216,72 @@
         </div>
     </div>
 
-    <!-- Info Fields -->
-    <div class="bg-white border p-3 mb-3">
-        <div class="info-row">
-            <div class="info-field">
-                <label>العدة:</label>
-                <span class="value">{{ sheet.crane.name }}</span>
-            </div>
-            <div class="info-field">
-                <label>اسم السائق:</label>
-                <span class="value">{{ sheet.driver.name }}</span>
-            </div>
-            <div class="info-field">
-                <label>موقع:</label>
-                <span class="value">{{ sheet.location|default:"—" }}</span>
-            </div>
-        </div>
-        <div class="info-row">
-            <div class="info-field">
-                <label>العميل:</label>
-                <span class="value">{{ sheet.client.name }}</span>
-            </div>
-            <div class="info-field">
-                <label>الشهر:</label>
-                <span class="value">{{ sheet.get_month_display_ar }} {{ sheet.year }}</span>
-            </div>
-            <div class="info-field">
-                <label>المشرف المسؤول:</label>
-                <span class="value">{{ sheet.supervisor_name|default:"—" }}</span>
-            </div>
-        </div>
-    </div>
-
     <!-- Main Table Form -->
     <form method="post" action="{% url 'monthly_sheet_save' sheet.pk %}" id="sheet-form">
         {% csrf_token %}
-        
+
+        <!-- Info Fields (inside form for price_per_day to be submitted) -->
+        <div class="bg-white border p-3 mb-3">
+            <div class="info-row">
+                <div class="info-field">
+                    <label>العدة:</label>
+                    <span class="value">{{ sheet.crane.name }}</span>
+                </div>
+                <div class="info-field">
+                    <label>اسم السائق:</label>
+                    <span class="value">{{ sheet.driver.name }}</span>
+                </div>
+                <div class="info-field">
+                    <label>عدد السائقين:</label>
+                    <span class="value">{{ sheet.driver_count }}</span>
+                </div>
+                <div class="info-field">
+                    <label>موقع:</label>
+                    <span class="value">{{ sheet.location|default:"—" }}</span>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-field">
+                    <label>العميل:</label>
+                    <span class="value">{{ sheet.client.name }}</span>
+                </div>
+                <div class="info-field">
+                    <label>الفترة:</label>
+                    <span class="value">{{ sheet.start_date|date:"d/m/Y" }} - {{ sheet.end_date|date:"d/m/Y" }}</span>
+                </div>
+                <div class="info-field">
+                    <label>عدد ساعات الوردية:</label>
+                    <input type="number" step="1" name="shift_divisor" id="shift_divisor"
+                        value="{{ sheet.shift_divisor|default:8 }}" class="form-control form-control-sm ms-2"
+                        style="width: 80px; display: inline-block;" min="1" max="24">
+                </div>
+                <div class="info-field">
+                    <label>سعر اليوم:</label>
+                    <input type="number" step="1" name="price_per_day" id="price_per_day"
+                        value="{{ sheet.price_per_day|default:0 }}" class="form-control form-control-sm ms-2"
+                        style="width: 100px; display: inline-block;" min="0">
+                </div>
+                <div class="info-field">
+                    <label>المشرف المسؤول:</label>
+                    <span class="value">{{ sheet.supervisor_name|default:"—" }}</span>
+                </div>
+            </div>
+        </div>
+
         <div class="bg-white border">
-            <table class="timesheet-table">
+            <table class="timesheet-table" id="entries-table">
                 <thead>
                     <tr>
                         <th rowspan="2" class="col-num">م</th>
                         <th rowspan="2" class="col-day">اليوم</th>
                         <th rowspan="2" class="col-date">التاريخ</th>
-                        <th colspan="3">إجمالي ساعات التشغيل وفقا لمرحلي التشغيل</th>
-                        <th rowspan="2" class="col-trips">رحلات</th>
+                        {% if sheet.driver_count > 1 %}
+                        <th rowspan="2" class="col-driver">السائق</th>
+                        {% endif %}
+                        <th colspan="3">ساعات التشغيل</th>
                         <th rowspan="2" class="col-notes">البيان</th>
-                        <th rowspan="2" class="col-attendance">إجمالي<br>ساعات<br>الحضور</th>
+                        <th rowspan="2" class="col-attendance">ساعات<br>الحضور</th>
+
                     </tr>
                     <tr>
                         <th class="col-time sub-header">من</th>
@@ -197,103 +289,111 @@
                         <th class="col-hours sub-header">إجمالي</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="entries-tbody">
                     {% for entry in entries %}
-                    <tr class="{% if entry.weekday == 'Friday' %}friday-row{% endif %} {% if entry.from_time %}has-data{% endif %}"
-                        data-day="{{ entry.day_number }}">
+                    <tr class="entry-row {% if entry.weekday == 'Friday' %}friday-row{% endif %} {% if entry.from_time %}has-data{% endif %}"
+                        data-entry-id="{{ entry.id }}" data-day="{{ entry.day_number }}">
                         <!-- م (Number) -->
                         <td class="fw-bold">{{ entry.day_number }}</td>
-                        
+
                         <!-- اليوم (Day) -->
                         <td>
                             {% if entry.date %}
                             {{ entry.weekday_ar }}
                             {% endif %}
                         </td>
-                        
+
                         <!-- التاريخ (Date) -->
                         <td>
                             {% if entry.date %}
                             {{ entry.date|date:"d/m/Y" }}
                             {% endif %}
                         </td>
-                        
-                        <!-- من (From) -->
+
+                        {% if sheet.driver_count > 1 %}
+                        <!-- السائق (Driver) -->
+                        <td>
+                            {% if entry.date %}
+                            <select name="entry_{{ entry.id }}_driver" class="driver-select">
+                                {% for driver in drivers %}
+                                <option value="{{ driver.id }}" {% if entry.driver_id == driver.id %}selected{% endif %}>
+                                    {{ driver.name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+
+                        <!-- من (From) - Integer hours -->
                         <td>
                             {% if entry.date %}
                             <div class="time-input-group">
-                                <input type="number" name="entry_{{ entry.day_number }}_from_time"
-                                       value="{% if entry.from_time %}{{ entry.from_time }}{% endif %}"
-                                       min="0" max="12.5" step="0.5"
-                                       class="time-from" data-day="{{ entry.day_number }}" placeholder="8">
-                                <select name="entry_{{ entry.day_number }}_from_period" class="period-from" data-day="{{ entry.day_number }}">
-                                    <option value="AM" {% if entry.from_period == 'AM' %}selected{% endif %}>AM</option>
-                                    <option value="PM" {% if entry.from_period == 'PM' %}selected{% endif %}>PM</option>
+                                <input type="number" name="entry_{{ entry.id }}_from_time"
+                                    value="{% if entry.from_time %}{{ entry.from_time }}{% endif %}" min="1" max="12"
+                                    step="1" class="time-from" data-entry-id="{{ entry.id }}" placeholder="8">
+                                <select name="entry_{{ entry.id }}_from_period" class="period-from"
+                                    data-entry-id="{{ entry.id }}">
+                                    <option value="AM" {% if entry.from_period == 'AM' %}selected{% endif %}>ص</option>
+                                    <option value="PM" {% if entry.from_period == 'PM' %}selected{% endif %}>م</option>
                                 </select>
                             </div>
                             {% endif %}
                         </td>
-                        
-                        <!-- إلى (To) -->
+
+                        <!-- إلى (To) - Integer hours -->
                         <td>
                             {% if entry.date %}
                             <div class="time-input-group">
-                                <input type="number" name="entry_{{ entry.day_number }}_to_time"
-                                       value="{% if entry.to_time %}{{ entry.to_time }}{% endif %}"
-                                       min="0" max="12.5" step="0.5"
-                                       class="time-to" data-day="{{ entry.day_number }}" placeholder="5">
-                                <select name="entry_{{ entry.day_number }}_to_period" class="period-to" data-day="{{ entry.day_number }}">
-                                    <option value="PM" {% if entry.to_period == 'PM' %}selected{% endif %}>PM</option>
-                                    <option value="AM" {% if entry.to_period == 'AM' %}selected{% endif %}>AM</option>
+                                <input type="number" name="entry_{{ entry.id }}_to_time"
+                                    value="{% if entry.to_time %}{{ entry.to_time }}{% endif %}" min="1" max="12"
+                                    step="1" class="time-to" data-entry-id="{{ entry.id }}" placeholder="5">
+                                <select name="entry_{{ entry.id }}_to_period" class="period-to"
+                                    data-entry-id="{{ entry.id }}">
+                                    <option value="PM" {% if entry.to_period == 'PM' %}selected{% endif %}>م</option>
+                                    <option value="AM" {% if entry.to_period == 'AM' %}selected{% endif %}>ص</option>
                                 </select>
                             </div>
                             {% endif %}
                         </td>
-                        
+
                         <!-- إجمالي (Total Hours) -->
                         <td>
                             {% if entry.date %}
-                            <span class="hours-display" id="hours_{{ entry.day_number }}">
-                                {% if entry.operating_hours > 0 %}{{ entry.operating_hours|floatformat:1 }}{% endif %}
+                            <span class="hours-display" data-entry-id="{{ entry.id }}">
+                                {% if entry.operating_hours > 0 %}{{ entry.operating_hours|floatformat:0 }}{% endif %}
                             </span>
                             {% endif %}
                         </td>
-                        
-                        <!-- رحلات (Trips) -->
-                        <td>
-                            {% if entry.date %}
-                            <input type="number" name="entry_{{ entry.day_number }}_trips"
-                                   value="{% if entry.trips > 0 %}{{ entry.trips }}{% endif %}"
-                                   min="0" class="trips-input" data-day="{{ entry.day_number }}">
-                            {% endif %}
-                        </td>
-                        
+
                         <!-- البيان (Notes) -->
                         <td>
                             {% if entry.date %}
-                            <input type="text" name="entry_{{ entry.day_number }}_notes"
-                                   value="{{ entry.notes }}" class="notes-input">
+                            <input type="text" name="entry_{{ entry.id }}_notes" value="{{ entry.notes }}"
+                                class="notes-input">
                             {% endif %}
                         </td>
-                        
-                        <!-- إجمالي ساعات الحضور (Attendance) -->
+
+                        <!-- ساعات الحضور (Attendance) -->
                         <td>
                             {% if entry.date %}
-                            <input type="number" name="entry_{{ entry.day_number }}_attendance"
-                                   value="{% if entry.attendance_hours > 0 %}{{ entry.attendance_hours|floatformat:0 }}{% endif %}"
-                                   min="0" step="1" class="attendance-input" data-day="{{ entry.day_number }}">
+                            <input type="number" name="entry_{{ entry.id }}_attendance"
+                                value="{% if entry.attendance_hours > 0 %}{{ entry.attendance_hours|floatformat:0 }}{% endif %}"
+                                min="0" step="1" class="attendance-input" data-entry-id="{{ entry.id }}">
                             {% endif %}
                         </td>
+
+
                     </tr>
                     {% endfor %}
-                    
+
                     <!-- Totals Row -->
                     <tr class="totals-row">
-                        <td colspan="5" class="text-start pe-3">الإجماليات</td>
+                        <td colspan="{% if sheet.driver_count > 1 %}6{% else %}5{% endif %}" class="text-start pe-3">
+                            الإجماليات</td>
                         <td id="total-hours">{{ sheet.total_operating_hours|floatformat:0 }}</td>
-                        <td id="total-trips">{{ sheet.total_trips }}</td>
                         <td></td>
                         <td id="total-attendance">{{ sheet.total_attendance_hours|floatformat:0 }}</td>
+
                     </tr>
                 </tbody>
             </table>
@@ -306,7 +406,7 @@
                     <div class="info-field">
                         <label>المشرف المسؤول:</label>
                         <input type="text" name="supervisor_name" class="form-control form-control-sm"
-                               value="{{ sheet.supervisor_name }}" style="max-width: 200px;">
+                            value="{{ sheet.supervisor_name }}" style="max-width: 200px;">
                     </div>
                 </div>
                 <div class="col-md-4 text-center">
@@ -322,7 +422,7 @@
 
     <!-- Summary Cards -->
     <div class="row mt-4 no-print">
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card bg-success text-white">
                 <div class="card-body text-center py-2">
                     <small>إجمالي ساعات التشغيل</small>
@@ -330,15 +430,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body text-center py-2">
-                    <small>إجمالي الرحلات</small>
-                    <h4 class="mb-0" id="summary-trips">{{ sheet.total_trips }}</h4>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card bg-warning">
                 <div class="card-body text-center py-2">
                     <small>الإيراد المتوقع</small>
@@ -346,11 +438,42 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card bg-primary text-white">
                 <div class="card-body text-center py-2">
-                    <small>أجر السائق</small>
-                    <h4 class="mb-0" id="summary-wage">{{ sheet.total_driver_wage|floatformat:0 }} ج.م</h4>
+                    <small>إجمالي ساعات الحضور</small>
+                    <h4 class="mb-0" id="summary-attendance">{{ sheet.total_attendance_hours|floatformat:0 }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Driver Stats - Always show with dynamic calculation -->
+    <div class="row mt-3 no-print">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">ساعات السائقين</h6>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-bordered mb-0" style="direction: rtl;" id="driver-stats-table">
+                        <thead>
+                            <tr>
+                                <th>السائق</th>
+                                <th>إجمالي الساعات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="driver-stats-tbody">
+                            {% for stat in driver_stats %}
+                            <tr data-driver-name="{{ stat.driver__name }}">
+                                <td>{{ stat.driver__name }}</td>
+                                <td class="driver-total-hours">{{ stat.total_hours|floatformat:0 }}</td>
+                            </tr>
+                            {% empty %}
+                            <!-- Will be populated dynamically -->
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -360,97 +483,320 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Calculate hours when time changes
-    document.querySelectorAll('.time-from, .time-to, .period-from, .period-to').forEach(input => {
-        input.addEventListener('change', function() {
-            const day = this.dataset.day;
-            calculateHours(day);
-            updateTotals();
+    const SHEET_PK = {{ sheet.pk }};
+    const DRIVER_COUNT = {{ sheet.driver_count }};
+    const DRIVERS = [
+        {% for driver in drivers %}
+    { id: { { driver.id } }, name: "{{ driver.name }}" },
+    {% endfor %}
+    ];
+    const CSRF_TOKEN = '{{ csrf_token }}';
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Calculate hours when time changes
+        document.querySelectorAll('.time-from, .time-to, .period-from, .period-to').forEach(input => {
+            input.addEventListener('change', function () {
+                const entryId = this.dataset.entryId;
+                calculateHoursForEntry(entryId);
+                updateTotals();
+            });
         });
-    });
-    
-    // Update totals when trips or attendance changes
-    document.querySelectorAll('.trips-input, .attendance-input').forEach(input => {
-        input.addEventListener('change', updateTotals);
-    });
-    
-    // Initial totals calculation
-    updateTotals();
-});
 
-function calculateHours(day) {
-    const fromInput = document.querySelector(`.time-from[data-day="${day}"]`);
-    const fromPeriod = document.querySelector(`.period-from[data-day="${day}"]`);
-    const toInput = document.querySelector(`.time-to[data-day="${day}"]`);
-    const toPeriod = document.querySelector(`.period-to[data-day="${day}"]`);
-    const hoursSpan = document.getElementById(`hours_${day}`);
-    
-    if (!fromInput || !toInput || !hoursSpan) return;
-    
-    if (fromInput.value && toInput.value) {
-        let fromVal = parseFloat(fromInput.value);
-        let toVal = parseFloat(toInput.value);
-        
-        // Convert to 24h
-        if (fromPeriod.value === 'PM' && fromVal < 12) fromVal += 12;
-        if (fromPeriod.value === 'AM' && fromVal === 12) fromVal = 0;
-        
-        if (toPeriod.value === 'PM' && toVal < 12) toVal += 12;
-        if (toPeriod.value === 'AM' && toVal === 12) toVal = 0;
-        
-        let diff = toVal - fromVal;
-        
-        // Handle overnight
-        if (diff < 0) {
-            diff += 24;
+        // Update totals when attendance changes
+        document.querySelectorAll('.attendance-input').forEach(input => {
+            input.addEventListener('change', updateTotals);
+        });
+
+        // Handle shift divisor change
+        const shiftDivisorInput = document.getElementById('shift_divisor');
+        if (shiftDivisorInput) {
+            shiftDivisorInput.addEventListener('change', updateTotals);
         }
-        
-        hoursSpan.textContent = diff.toFixed(1).replace('.0', '');
-        
-        // Highlight row if has data
-        const row = fromInput.closest('tr');
-        if (diff > 0) {
-            row.classList.add('has-data');
+
+        // Handle price per day change
+        const pricePerDayInput = document.getElementById('price_per_day');
+        if (pricePerDayInput) {
+            pricePerDayInput.addEventListener('change', updateTotals);
         }
-    } else {
-        hoursSpan.textContent = '';
+
+        // Update totals when driver selection changes (for multi-driver mode)
+        document.querySelectorAll('.driver-select').forEach(select => {
+            select.addEventListener('change', updateTotals);
+        });
+
+        // Initial totals calculation
+        updateTotals();
+    });
+
+    function calculateHoursForEntry(entryId) {
+        const fromInput = document.querySelector(`.time-from[data-entry-id="${entryId}"]`);
+        const fromPeriod = document.querySelector(`.period-from[data-entry-id="${entryId}"]`);
+        const toInput = document.querySelector(`.time-to[data-entry-id="${entryId}"]`);
+        const toPeriod = document.querySelector(`.period-to[data-entry-id="${entryId}"]`);
+        const hoursSpan = document.querySelector(`.hours-display[data-entry-id="${entryId}"]`);
+
+        if (!fromInput || !toInput || !hoursSpan) return;
+
+        if (fromInput.value && toInput.value) {
+            let fromVal = parseInt(fromInput.value);
+            let toVal = parseInt(toInput.value);
+
+            // Convert to 24h
+            if (fromPeriod.value === 'PM' && fromVal < 12) fromVal += 12;
+            if (fromPeriod.value === 'AM' && fromVal === 12) fromVal = 0;
+
+            if (toPeriod.value === 'PM' && toVal < 12) toVal += 12;
+            if (toPeriod.value === 'AM' && toVal === 12) toVal = 0;
+
+            let diff = toVal - fromVal;
+
+            // Handle overnight
+            if (diff < 0) {
+                diff += 24;
+            }
+
+            hoursSpan.textContent = diff;
+
+            // Highlight row if has data
+            const row = fromInput.closest('tr');
+            if (diff > 0) {
+                row.classList.add('has-data');
+            }
+        } else {
+            hoursSpan.textContent = '';
+        }
     }
-}
 
-function updateTotals() {
-    let totalHours = 0;
-    let totalTrips = 0;
-    let totalAttendance = 0;
-    
-    // Sum hours
-    document.querySelectorAll('.hours-display').forEach(span => {
-        const val = parseInt(span.textContent) || 0;
-        totalHours += val;
-    });
-    
-    // Sum trips
-    document.querySelectorAll('.trips-input').forEach(input => {
-        const val = parseInt(input.value) || 0;
-        totalTrips += val;
-    });
-    
-    // Sum attendance
-    document.querySelectorAll('.attendance-input').forEach(input => {
-        const val = parseInt(input.value) || 0;
-        totalAttendance += val;
-    });
-    
-    // Update displays
-    document.getElementById('total-hours').textContent = totalHours || '';
-    document.getElementById('total-trips').textContent = totalTrips || '';
-    document.getElementById('total-attendance').textContent = totalAttendance || '';
-    
-    // Update summary cards
-    const summaryHours = document.getElementById('summary-hours');
-    const summaryTrips = document.getElementById('summary-trips');
-    if (summaryHours) summaryHours.textContent = totalHours;
-    if (summaryTrips) summaryTrips.textContent = totalTrips;
-}
+    function updateTotals() {
+        let totalHours = 0;
+        let totalAttendance = 0;
+        const driverHours = {}; // Track hours per driver
+
+        // Sum hours and track per driver
+        document.querySelectorAll('.entry-row').forEach(row => {
+            const entryId = row.dataset.entryId;
+            const hoursSpan = row.querySelector('.hours-display');
+            const hours = hoursSpan ? (parseInt(hoursSpan.textContent) || 0) : 0;
+
+            totalHours += hours;
+
+            // Get selected driver for this entry (if multi-driver mode)
+            const driverSelect = row.querySelector('.driver-select');
+            let driverName = '';
+
+            if (driverSelect) {
+                // Multi-driver mode - get selected driver name
+                const selectedOption = driverSelect.options[driverSelect.selectedIndex];
+                if (selectedOption) {
+                    driverName = selectedOption.text;
+                }
+            } else {
+                // Single driver mode - use the main driver
+                driverName = document.querySelector('.info-field .value')?.textContent.trim() || 'السائق';
+            }
+
+            if (driverName && hours > 0) {
+                driverHours[driverName] = (driverHours[driverName] || 0) + hours;
+            }
+        });
+
+        // Sum attendance
+        document.querySelectorAll('.attendance-input').forEach(input => {
+            const val = parseInt(input.value) || 0;
+            totalAttendance += val;
+        });
+
+        // Calculate shift days for revenue calculation
+        const shiftDivisor = parseInt(document.getElementById('shift_divisor').value) || 8;
+        const shiftDays = totalHours / shiftDivisor;
+
+        // Calculate revenue: price_per_day * shift_days
+        const pricePerDay = parseInt(document.getElementById('price_per_day').value) || 0;
+        const revenue = pricePerDay * shiftDays;
+
+        // Update displays
+        const totalHoursEl = document.getElementById('total-hours');
+        const totalAttendanceEl = document.getElementById('total-attendance');
+
+        if (totalHoursEl) totalHoursEl.textContent = totalHours || '';
+        if (totalAttendanceEl) totalAttendanceEl.textContent = totalAttendance || '';
+
+        // Update summary cards
+        const summaryHours = document.getElementById('summary-hours');
+        const summaryRevenue = document.getElementById('summary-revenue');
+        const summaryAttendance = document.getElementById('summary-attendance');
+
+        if (summaryHours) summaryHours.textContent = totalHours;
+        if (summaryRevenue) summaryRevenue.textContent = revenue.toFixed(0) + ' ج.م';
+        if (summaryAttendance) summaryAttendance.textContent = totalAttendance;
+
+        // Update driver stats table
+        updateDriverStats(driverHours);
+    }
+
+    function updateDriverStats(driverHours) {
+        const tbody = document.getElementById('driver-stats-tbody');
+        if (!tbody) return;
+
+        // Clear existing rows
+        tbody.innerHTML = '';
+
+        // Create rows for each driver with hours
+        const sortedDrivers = Object.entries(driverHours).sort((a, b) => a[0].localeCompare(b[0], 'ar'));
+
+        if (sortedDrivers.length === 0) {
+            // No data yet - show placeholder
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="2" class="text-center text-muted">لا توجد بيانات</td>';
+            tbody.appendChild(tr);
+        } else {
+            sortedDrivers.forEach(([driverName, hours]) => {
+                const tr = document.createElement('tr');
+                tr.dataset.driverName = driverName;
+                tr.innerHTML = `
+                    <td>${driverName}</td>
+                    <td class="driver-total-hours">${hours}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+
+    function addShift(dayNumber) {
+        const formData = new FormData();
+        formData.append('day_number', dayNumber);
+
+        fetch(`/monthly-sheets/${SHEET_PK}/add-shift/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN
+            },
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Find the last row for this day and insert after it
+                    const rows = document.querySelectorAll(`tr[data-day="${dayNumber}"]`);
+                    const lastRow = rows[rows.length - 1];
+
+                    // Create new row
+                    const newRow = createEntryRow(data.entry_id, dayNumber, data.date, data.weekday_ar, data.driver_id);
+                    lastRow.insertAdjacentElement('afterend', newRow);
+
+                    // Bind events
+                    bindRowEvents(newRow);
+                } else {
+                    alert('خطأ: ' + data.error);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('حدث خطأ أثناء إضافة الوردية');
+            });
+    }
+
+    function deleteShift(entryId) {
+        if (!confirm('هل أنت متأكد من حذف هذه الوردية؟')) return;
+
+        fetch(`/daily-entry/${entryId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove the row
+                    const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
+                    if (row) row.remove();
+                    updateTotals();
+                } else {
+                    alert('خطأ: ' + data.error);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('حدث خطأ أثناء حذف الوردية');
+            });
+    }
+
+    function createEntryRow(entryId, dayNumber, date, weekdayAr, driverId) {
+        const tr = document.createElement('tr');
+        tr.className = 'entry-row split-shift-row';
+        tr.dataset.entryId = entryId;
+        tr.dataset.day = dayNumber;
+
+        let driverOptions = DRIVERS.map(d =>
+            `<option value="${d.id}" ${d.id === driverId ? 'selected' : ''}>${d.name}</option>`
+        ).join('');
+
+        let html = `
+            <td class="fw-bold">${dayNumber}</td>
+            <td>${weekdayAr}</td>
+            <td>${date}</td>
+            ${DRIVER_COUNT > 1 ? `
+            <td>
+                <select name="entry_${entryId}_driver" class="driver-select">
+                    ${driverOptions}
+                </select>
+            </td>
+            ` : ''}
+            <td>
+                <div class="time-input-group">
+                    <input type="number" name="entry_${entryId}_from_time" min="1" max="12" step="1" 
+                           class="time-from" data-entry-id="${entryId}" placeholder="8">
+                    <select name="entry_${entryId}_from_period" class="period-from" data-entry-id="${entryId}">
+                        <option value="AM">ص</option>
+                        <option value="PM">م</option>
+                    </select>
+                </div>
+            </td>
+            <td>
+                <div class="time-input-group">
+                    <input type="number" name="entry_${entryId}_to_time" min="1" max="12" step="1" 
+                           class="time-to" data-entry-id="${entryId}" placeholder="5">
+                    <select name="entry_${entryId}_to_period" class="period-to" data-entry-id="${entryId}">
+                        <option value="PM" selected>م</option>
+                        <option value="AM">ص</option>
+                    </select>
+                </div>
+            </td>
+            <td>
+                <span class="hours-display" data-entry-id="${entryId}"></span>
+            </td>
+            <td>
+                <input type="text" name="entry_${entryId}_notes" class="notes-input">
+            </td>
+            <td>
+                <input type="number" name="entry_${entryId}_attendance" min="0" step="1" 
+                       class="attendance-input" data-entry-id="${entryId}">
+            </td>
+
+        `;
+
+        tr.innerHTML = html;
+        return tr;
+    }
+
+    function bindRowEvents(row) {
+        row.querySelectorAll('.time-from, .time-to, .period-from, .period-to').forEach(input => {
+            input.addEventListener('change', function () {
+                const entryId = this.dataset.entryId;
+                calculateHoursForEntry(entryId);
+                updateTotals();
+            });
+        });
+
+        row.querySelectorAll('.attendance-input').forEach(input => {
+            input.addEventListener('change', updateTotals);
+        });
+
+        // Bind driver select change for multi-driver mode
+        row.querySelectorAll('.driver-select').forEach(select => {
+            select.addEventListener('change', updateTotals);
+        });
+    }
 </script>
 {% endblock %}

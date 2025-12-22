@@ -86,12 +86,8 @@ class TimeSheet(models.Model):
             return
         
         # Get rate based on shift type
-        if self.shift_type == '8h':
-            self.revenue = self.crane.rate_8h
-        elif self.shift_type == '9h':
-            self.revenue = self.crane.rate_9h
-        else:  # 12h
-            self.revenue = self.crane.rate_12h
+        # Revenue calculation removed as crane rates are deprecated.
+        self.revenue = Decimal('0')
         
         # Calculate driver wage (base salary per day + overtime bonus)
         if self.driver:
@@ -126,14 +122,26 @@ class MonthlyTimeSheet(models.Model):
                                verbose_name='Operator')
     location = models.CharField(max_length=255, blank=True, default='', verbose_name='Location/Site')
     
-    # Month/Year
-    month = models.PositiveIntegerField()  # 1-12
-    year = models.PositiveIntegerField()
+    # Date Range (instead of just month/year)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
     
+    # Legacy month/year fields (kept for backward compatibility)
+    month = models.PositiveIntegerField(null=True, blank=True)  # 1-12
+    year = models.PositiveIntegerField(null=True, blank=True)
+    
+    # Financial config
+    price_per_day = models.PositiveIntegerField(default=0, verbose_name='Price per Day (سعر اليوم)')
+    shift_divisor = models.PositiveIntegerField(default=8, verbose_name='Shift Divisor (hours per shift)')
+    
+    # Multi-driver support
+    driver_count = models.PositiveIntegerField(default=1, verbose_name='Number of Drivers')
+
     # Calculated totals
     total_operating_hours = models.DecimalField(max_digits=7, decimal_places=2, default=0)
     total_attendance_hours = models.DecimalField(max_digits=7, decimal_places=2, default=0)
-    total_trips = models.PositiveIntegerField(default=0)
+    total_trips = models.PositiveIntegerField(default=0)  # Kept for backward compatibility
+    total_shift_days = models.DecimalField(max_digits=7, decimal_places=2, default=0, verbose_name='Total Shift Days')
     total_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_driver_wage = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     
@@ -149,6 +157,39 @@ class MonthlyTimeSheet(models.Model):
         unique_together = ['client', 'crane', 'driver', 'month', 'year']
         verbose_name = 'Monthly Time Sheet'
         verbose_name_plural = 'Monthly Time Sheets'
+    
+    def clean(self):
+        """Validate that this assignment doesn't overlap with existing crane assignments."""
+        super().clean()
+        
+        # Skip validation if dates are not set
+        if not self.start_date or not self.end_date:
+            return
+        
+        # Validate date order
+        if self.end_date < self.start_date:
+            raise ValidationError({
+                'end_date': 'End date must be on or after start date.'
+            })
+        
+        # Check for overlapping assignments for the same crane
+        overlapping = MonthlyTimeSheet.objects.filter(
+            crane=self.crane,
+            start_date__lte=self.end_date,
+            end_date__gte=self.start_date
+        )
+        
+        # Exclude self when updating an existing record
+        if self.pk:
+            overlapping = overlapping.exclude(pk=self.pk)
+        
+        if overlapping.exists():
+            conflict = overlapping.first()
+            raise ValidationError({
+                'crane': f'This crane is already assigned from {conflict.start_date} to {conflict.end_date} '
+                         f'(Client: {conflict.client.name}, Location: {conflict.location or "N/A"}). '
+                         f'Please choose a non-overlapping date range.'
+            })
     
     def __str__(self):
         return f"{self.get_month_display()} {self.year} - {self.driver.name} - {self.crane.name}"
@@ -175,60 +216,69 @@ class MonthlyTimeSheet(models.Model):
         
         self.total_operating_hours = totals['operating'] or Decimal('0')
         self.total_attendance_hours = totals['attendance'] or Decimal('0')
-        self.total_trips = totals['trips'] or 0
+        self.total_trips = totals['trips'] or 0  # Kept for backward compatibility
         
-        # Calculate revenue based on operating hours
-        # Using crane rates based on daily shift patterns
-        total_revenue = Decimal('0')
+        # Calculate shift days: total_operating_hours / shift_divisor
+        divisor = Decimal(str(self.shift_divisor)) if self.shift_divisor > 0 else Decimal('8')
+        self.total_shift_days = (self.total_operating_hours / divisor).quantize(Decimal('0.01'))
+        
+        # Calculate revenue: price_per_day * total_shift_days
+        self.total_revenue = (Decimal(str(self.price_per_day or 0)) * self.total_shift_days).quantize(Decimal('0.01'))
+        
+        # Driver wage calculation (uses per-entry driver if available, else sheet driver)
         total_wage = Decimal('0')
-        
-        for entry in self.daily_entries.filter(operating_hours__gt=0):
+        for entry in self.daily_entries.select_related('driver').filter(operating_hours__gt=0):
             hours = entry.operating_hours
-            if hours <= 8:
-                total_revenue += self.crane.rate_8h
-            elif hours <= 9:
-                total_revenue += self.crane.rate_9h
-            else:
-                total_revenue += self.crane.rate_12h
-            
-            # Driver wage calculation
-            daily_rate = self.driver.base_salary / Decimal('30')
+            # Use entry's driver if set, otherwise fall back to sheet's driver
+            entry_driver = entry.driver if entry.driver_id else self.driver
+            daily_rate = entry_driver.base_salary / Decimal('30')
             overtime = max(Decimal('0'), hours - Decimal('8'))
             overtime_rate = daily_rate / Decimal('8') * Decimal('1.5')
             total_wage += daily_rate + (overtime * overtime_rate)
         
-        self.total_revenue = total_revenue
-        self.total_driver_wage = total_wage
+        self.total_driver_wage = total_wage.quantize(Decimal('0.01'))
     
     def create_daily_entries(self):
-        """Create 31 daily entry rows for this sheet."""
-        import calendar
-        from datetime import date
+        """Create daily entry rows for this sheet based on date range."""
+        from datetime import timedelta
         
-        # Get number of days in this month
-        days_in_month = calendar.monthrange(self.year, self.month)[1]
+        if not self.start_date or not self.end_date:
+            return
         
-        for day in range(1, 32):
-            if day <= days_in_month:
-                entry_date = date(self.year, self.month, day)
-                weekday = entry_date.strftime('%A')
-                weekday_ar = ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 
-                              'الجمعة', 'السبت', 'الأحد'][entry_date.weekday()]
-            else:
-                entry_date = None
-                weekday = ''
-                weekday_ar = ''
+        current_date = self.start_date
+        day_number = 1
+        
+        while current_date <= self.end_date:
+            weekday = current_date.strftime('%A')
+            weekday_ar = ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 
+                          'الجمعة', 'السبت', 'الأحد'][current_date.weekday()]
             
             DailyEntry.objects.create(
                 monthly_sheet=self,
-                day_number=day,
-                date=entry_date,
+                day_number=day_number,
+                date=current_date,
                 weekday=weekday,
-                weekday_ar=weekday_ar
+                weekday_ar=weekday_ar,
+                hourly_rate=0,
+                driver=self.driver  # Default to sheet's driver
             )
+            
+            current_date += timedelta(days=1)
+            day_number += 1
     
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        
+        if not is_new:
+            self.calculate_totals()
+        
+        # Run validation (overlap check, date validation)
+        self.full_clean()
+        
+        if not is_new:
+            # Legacy rate update logic removed as default_hourly_rate is deprecated
+            pass
+
         super().save(*args, **kwargs)
         if is_new:
             self.create_daily_entries()
@@ -240,6 +290,8 @@ class DailyEntry(models.Model):
     Matches hard copy columns: م, اليوم, التاريخ, من, إلى, ساعات التشغيل, رحلات, البيان, ساعات الحضور
     """
     monthly_sheet = models.ForeignKey(MonthlyTimeSheet, on_delete=models.CASCADE, related_name='daily_entries')
+    driver = models.ForeignKey(Driver, on_delete=models.PROTECT, related_name='daily_entries',
+                               null=True, blank=True, verbose_name='Driver')
     
     # Row info (auto-generated)
     day_number = models.PositiveIntegerField()  # م (1-31)
@@ -247,11 +299,11 @@ class DailyEntry(models.Model):
     weekday = models.CharField(max_length=20, blank=True)  # اليوم (English)
     weekday_ar = models.CharField(max_length=20, blank=True)  # اليوم (Arabic)
     
-    # Time inputs (Changed to Decimal for simple hour entry)
-    from_time = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True, verbose_name='From (من)')
+    # Time inputs (Integer hours for simplicity)
+    from_time = models.PositiveIntegerField(null=True, blank=True, verbose_name='From (من)')
     from_period = models.CharField(max_length=2, choices=[('AM', 'AM'), ('PM', 'PM')], default='AM', verbose_name='AM/PM')
     
-    to_time = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True, verbose_name='To (إلى)')
+    to_time = models.PositiveIntegerField(null=True, blank=True, verbose_name='To (إلى)')
     to_period = models.CharField(max_length=2, choices=[('AM', 'AM'), ('PM', 'PM')], default='PM', verbose_name='AM/PM')
     
     # Calculated/Input fields
@@ -261,10 +313,12 @@ class DailyEntry(models.Model):
     notes = models.TextField(blank=True, default='', verbose_name='Notes (البيان)')
     attendance_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0,
                                            verbose_name='Attendance Hours (إجمالي ساعات الحضور)')
+    hourly_rate = models.PositiveIntegerField(default=0, verbose_name='Hourly Rate (سعر الساعة)')
+    daily_total = models.PositiveIntegerField(default=0, verbose_name='Daily Total (إجمالي اليوم)')
     
     class Meta:
         ordering = ['monthly_sheet', 'day_number']
-        unique_together = ['monthly_sheet', 'day_number']
+        # Note: unique_together removed to allow multiple entries per day (split shifts)
         verbose_name = 'Daily Entry'
         verbose_name_plural = 'Daily Entries'
     
@@ -272,39 +326,44 @@ class DailyEntry(models.Model):
         return f"Day {self.day_number} - {self.date}"
     
     def calculate_operating_hours(self):
-        """Calculate operating hours from from_time and to_time (decimal hours) with AM/PM."""
+        """Calculate operating hours from from_time and to_time (integer hours) with AM/PM."""
         if self.from_time is None or self.to_time is None:
             self.operating_hours = Decimal('0')
+            self.daily_total = 0
             return
         
-        # Ensure values are Decimal (handles potential string input from forms)
+        # Ensure values are integers
         try:
-            start_val = Decimal(str(self.from_time))
-            end_val = Decimal(str(self.to_time))
+            start_val = int(self.from_time)
+            end_val = int(self.to_time)
         except:
             self.operating_hours = Decimal('0')
+            self.daily_total = 0
             return
 
         # Convert start time to 24h
         if self.from_period == 'PM' and start_val < 12:
             start_val += 12
         elif self.from_period == 'AM' and start_val == 12:
-            start_val = Decimal('0')
+            start_val = 0
             
         # Convert end time to 24h
         if self.to_period == 'PM' and end_val < 12:
             end_val += 12
         elif self.to_period == 'AM' and end_val == 12:
-            end_val = Decimal('0')
+            end_val = 0
             
         # Calculate difference
         diff = end_val - start_val
         
         # Handle overnight (e.g. 8 PM to 2 AM -> 20 to 2 -> -18 -> +24 = 6)
         if diff < 0:
-            diff += Decimal('24')
+            diff += 24
             
-        self.operating_hours = diff
+        self.operating_hours = Decimal(str(diff))
+        
+        # Calculate daily total (hours * rate)
+        self.daily_total = int(diff * (self.hourly_rate or 0))
     
     def save(self, *args, **kwargs):
         self.calculate_operating_hours()
@@ -317,6 +376,7 @@ class DailyEntry(models.Model):
                 total_operating_hours=self.monthly_sheet.total_operating_hours,
                 total_attendance_hours=self.monthly_sheet.total_attendance_hours,
                 total_trips=self.monthly_sheet.total_trips,
+                total_shift_days=self.monthly_sheet.total_shift_days,
                 total_revenue=self.monthly_sheet.total_revenue,
                 total_driver_wage=self.monthly_sheet.total_driver_wage
             )

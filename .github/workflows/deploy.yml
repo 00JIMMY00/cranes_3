@@ -1,0 +1,53 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: SSH into VPS and deploy
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd ${{ secrets.PROJECT_DIR }}
+            
+            echo "📥 Pulling latest changes..."
+            git pull origin main --rebase
+            
+            echo "🛑 Stopping all containers..."
+            docker compose -f docker-compose.prod.yml down
+            
+            echo "🔨 Building backend (no cache)..."
+            docker compose -f docker-compose.prod.yml build backend --no-cache
+            
+            echo "🗑️  Removing frontend dist volume (if exists)..."
+            docker volume rm cranes_3_frontend_dist 2>/dev/null || true
+            
+            echo "🔨 Building frontend (no cache)..."
+            docker compose -f docker-compose.prod.yml build frontend --no-cache
+            
+            echo "🚀 Starting all services..."
+            docker compose -f docker-compose.prod.yml up -d
+            
+            echo "⏳ Waiting for services to start..."
+            sleep 10
+            
+            echo "🔄 Running database migrations..."
+            docker compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
+            
+            echo "📦 Collecting static files..."
+            docker compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput
+            
+            echo "✅ System restart complete!"
+            docker compose -f docker-compose.prod.yml ps
