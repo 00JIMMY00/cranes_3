@@ -1,7 +1,8 @@
-# Timesheet UI Fixes
+# ui-fixes Specification
 
-## MODIFIED Requirements
-
+## Purpose
+TBD - created by archiving change enhance-timesheet-reporting. Update Purpose after archive.
+## Requirements
 ### Requirement: Correctly Render Total Shift Days
 The `total_shift_days` value MUST be rendered as a number (formatted to 2 decimal places) in the timesheet summary and totals row, not as raw template code.
 
@@ -10,3 +11,4 @@ The `total_shift_days` value MUST be rendered as a number (formatted to 2 decima
 - **When** the user views the timesheet.
 - **Then** they see "10.50" in the "Total Shift Days" field.
 - **And** they do NOT see `{{ sheet.total_shift_days|floatformat:2 }}`.
+

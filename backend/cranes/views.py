@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -33,24 +34,45 @@ def crane_detail(request, pk):
     present = []
     future = []
     history = []
+    timeline_data = []
     
     for assignment in all_assignments:
+        # Determine status for timeline
+        status = 'past'
         if assignment.start_date and assignment.end_date:
             if assignment.start_date <= today <= assignment.end_date:
                 present.append(assignment)
+                status = 'present'
             elif assignment.start_date > today:
                 future.append(assignment)
+                status = 'future'
             elif assignment.end_date < today:
                 history.append(assignment)
+                status = 'past'
         elif assignment.start_date:
             # No end_date, consider as ongoing if started
             if assignment.start_date <= today:
                 present.append(assignment)
+                status = 'present'
             else:
                 future.append(assignment)
+                status = 'future'
         else:
             # No dates set, put in history as legacy
             history.append(assignment)
+            status = 'past'
+        
+        # Build timeline item (only if dates are set)
+        if assignment.start_date:
+            timeline_item = {
+                'id': assignment.id,
+                'content': assignment.client.name if assignment.client else 'Unknown',
+                'start': assignment.start_date.isoformat(),
+                'className': f'status-{status}',
+            }
+            if assignment.end_date:
+                timeline_item['end'] = assignment.end_date.isoformat()
+            timeline_data.append(timeline_item)
     
     # Sort history in reverse (most recent first)
     history.reverse()
@@ -61,6 +83,7 @@ def crane_detail(request, pk):
         'future': future,
         'history': history,
         'today': today,
+        'timeline_data_json': json.dumps(timeline_data),
     })
 
 
