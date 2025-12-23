@@ -14,3 +14,4 @@ node_modules/
 
 # Production generated files
 backend/staticfiles/
+.env.prod

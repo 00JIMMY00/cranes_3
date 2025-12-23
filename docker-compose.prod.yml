@@ -10,18 +10,16 @@ services:
     image: postgres:16-alpine
     container_name: cranes_db
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_NAME:-cranes_3_db}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-1qaz1qaz1qaz}
+    env_file:
+      - .env.prod
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5446:5432"   # expose DB externally
+      - "5446:5432" # expose DB externally
     networks:
       - cranes_network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-cranes_3_db}" ]
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -34,16 +32,13 @@ services:
       dockerfile: backend/Dockerfile
     container_name: cranes_backend
     restart: unless-stopped
+    env_file:
+      - .env.prod
     environment:
       - DEBUG=False
-      - SECRET_KEY=${SECRET_KEY:?Secret key is required}
-      - DB_NAME=${DB_NAME:-cranes_3_db}
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-1qaz1qaz1qaz}
-      - DB_HOST=db
-      - DB_PORT=5432
-      - ALLOWED_HOSTS=cranes.wahet-elarab.com,localhost,127.0.0.1,backend
-      - CSRF_TRUSTED_ORIGINS=https://cranes.wahet-elarab.com,http://localhost
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
@@ -67,7 +62,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=https://cranes.wahet-elarab.com/api
+        - VITE_API_URL=${VITE_API_URL}
     container_name: cranes_frontend
     restart: unless-stopped
     depends_on:
