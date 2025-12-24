@@ -25,4 +25,29 @@ jobs:
             echo "📥 Pulling latest changes..."
             git pull origin main --rebase
             
-
+            echo "🛑 Stopping all containers..."
+            docker compose -f docker-compose.prod.yml down
+            
+            echo "🔨 Building backend (no cache)..."
+            docker compose -f docker-compose.prod.yml build backend --no-cache
+            
+            echo "🗑️  Removing frontend dist volume (if exists)..."
+            docker volume rm cranes_3_frontend_dist 2>/dev/null || true
+            
+            echo "🔨 Building frontend (no cache)..."
+            docker compose -f docker-compose.prod.yml build frontend --no-cache
+            
+            echo "🚀 Starting all services..."
+            docker compose -f docker-compose.prod.yml up -d
+            
+            echo "⏳ Waiting for services to start..."
+            sleep 10
+            
+            echo "🔄 Running database migrations..."
+            docker compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
+            
+            echo "📦 Collecting static files..."
+            docker compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput
+            
+            echo "✅ System restart complete!"
+            docker compose -f docker-compose.prod.yml ps
