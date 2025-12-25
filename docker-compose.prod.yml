@@ -25,6 +25,7 @@ services:
       retries: 5
       start_period: 10s
 
+
   # Django Backend
   backend:
     build:
@@ -47,6 +48,7 @@ services:
         condition: service_healthy
     networks:
       - cranes_network
+      - reverse_proxy
     expose:
       - "8000"
     healthcheck:
@@ -62,31 +64,30 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=${VITE_API_URL}
+        - API_URL=${VITE_API_URL}
     container_name: cranes_frontend
     restart: unless-stopped
-    depends_on:
-      - backend
+    volumes:
+      - frontend_dist:/dist
     networks:
       - cranes_network
-    expose:
-      - "80"
-    healthcheck:
-      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:80/" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+      - reverse_proxy
 
 volumes:
   postgres_data:
     driver: local
   static_volume:
+    name: cranes_3_static_volume
     driver: local
   media_volume:
+    name: cranes_3_media_volume
+    driver: local
+  frontend_dist:
+    name: cranes_3_frontend_dist
     driver: local
 
 networks:
   cranes_network:
     driver: bridge
-    name: cranes_network
+  reverse_proxy:
+    external: true
